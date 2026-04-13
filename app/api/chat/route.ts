@@ -6,36 +6,37 @@ const client = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { message } = await req.json();
+    const { messages } = await req.json();
 
-    if (!message || typeof message !== "string") {
+    if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json(
-        { reply: "Brakuje wiadomości." },
+        { reply: "Brak wiadomości do przetworzenia." },
         { status: 400 }
       );
     }
 
+    const input = [
+      {
+        role: "system",
+        content:
+          "Jesteś pomocnym asystentem AI. Odpowiadasz po polsku, jasno, konkretnie i naturalnie. Pamiętasz kontekst rozmowy z tej sesji.",
+      },
+      ...messages.map((msg: { role: string; content: string }) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+    ];
+
     const response = await client.responses.create({
-      model: "gpt-5.4-mini",
-      input: [
-        {
-          role: "system",
-          content:
-            "Jesteś pomocnym asystentem AI. Odpowiadasz po polsku, jasno i konkretnie.",
-        },
-        {
-          role: "user",
-          content: message,
-        },
-      ],
+      model: "gpt-4o-mini",
+      input,
     });
 
     const reply = response.output_text || "Brak odpowiedzi od modelu.";
 
     return Response.json({ reply });
-  } catch (error) {
-    console.error("API error:", error);
-
+  } catch (error: any) {
+    console.error("OPENAI ERROR:", error);
     return Response.json(
       { reply: "Wystąpił błąd po stronie AI." },
       { status: 500 }
