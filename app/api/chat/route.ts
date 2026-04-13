@@ -6,11 +6,15 @@ const client = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
 
-    if (!Array.isArray(messages) || messages.length === 0) {
+    console.log("BODY:", body); // 🔥 debug
+
+    const messages = body.messages;
+
+    if (!messages || !Array.isArray(messages)) {
       return Response.json(
-        { reply: "Brak wiadomości do przetworzenia." },
+        { reply: "Błąd: brak wiadomości (messages)." },
         { status: 400 }
       );
     }
@@ -19,12 +23,9 @@ export async function POST(req: Request) {
       {
         role: "system",
         content:
-          "Jesteś pomocnym asystentem AI. Odpowiadasz po polsku, jasno, konkretnie i naturalnie. Pamiętasz kontekst rozmowy z tej sesji.",
+          "Jesteś konkretnym, inteligentnym asystentem. Odpowiadasz jasno, bez pierdolenia, po polsku.",
       },
-      ...messages.map((msg: { role: string; content: string }) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
+      ...messages,
     ];
 
     const response = await client.responses.create({
@@ -32,13 +33,19 @@ export async function POST(req: Request) {
       input,
     });
 
-    const reply = response.output_text || "Brak odpowiedzi od modelu.";
+    const reply =
+      response.output_text || "Brak odpowiedzi od modelu.";
 
     return Response.json({ reply });
   } catch (error: any) {
     console.error("OPENAI ERROR:", error);
+
     return Response.json(
-      { reply: "Wystąpił błąd po stronie AI." },
+      {
+        reply:
+          error?.message ||
+          "Wystąpił błąd po stronie AI.",
+      },
       { status: 500 }
     );
   }
