@@ -7,14 +7,11 @@ const client = new OpenAI({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    console.log("BODY:", body); // 🔥 debug
-
     const messages = body.messages;
 
-    if (!messages || !Array.isArray(messages)) {
+    if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json(
-        { reply: "Błąd: brak wiadomości (messages)." },
+        { reply: "Błąd: brak wiadomości." },
         { status: 400 }
       );
     }
@@ -23,9 +20,12 @@ export async function POST(req: Request) {
       {
         role: "system",
         content:
-          "Jesteś konkretnym, inteligentnym asystentem. Odpowiadasz jasno, bez pierdolenia, po polsku.",
+          "Jesteś pomocnym asystentem AI. Odpowiadasz po polsku, jasno, konkretnie i naturalnie.",
       },
-      ...messages,
+      ...messages.map((msg: { role: string; content: string }) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
     ];
 
     const response = await client.responses.create({
@@ -33,8 +33,7 @@ export async function POST(req: Request) {
       input,
     });
 
-    const reply =
-      response.output_text || "Brak odpowiedzi od modelu.";
+    const reply = response.output_text || "Brak odpowiedzi od modelu.";
 
     return Response.json({ reply });
   } catch (error: any) {
@@ -42,9 +41,7 @@ export async function POST(req: Request) {
 
     return Response.json(
       {
-        reply:
-          error?.message ||
-          "Wystąpił błąd po stronie AI.",
+        reply: error?.message || "Wystąpił błąd po stronie AI.",
       },
       { status: 500 }
     );
