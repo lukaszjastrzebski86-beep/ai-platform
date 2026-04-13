@@ -1,4 +1,4 @@
-"use client";
+]"use client";
 
 import { useState } from "react";
 
@@ -21,7 +21,11 @@ export default function Home() {
     const trimmed = message.trim();
     if (!trimmed || loading) return;
 
-    const newMessages: Msg[] = [...messages, { role: "user", content: trimmed }];
+    const newMessages: Msg[] = [
+      ...messages,
+      { role: "user", content: trimmed },
+    ];
+
     setMessages(newMessages);
     setMessage("");
     setLoading(true);
@@ -44,7 +48,7 @@ export default function Home() {
           content: data.reply || "Brak odpowiedzi.",
         },
       ]);
-    } catch (error) {
+    } catch {
       setMessages([
         ...newMessages,
         {
@@ -112,7 +116,14 @@ export default function Home() {
                 whiteSpace: "pre-wrap",
               }}
             >
-              <strong style={{ display: "block", marginBottom: "6px", fontSize: "12px", opacity: 0.8 }}>
+              <strong
+                style={{
+                  display: "block",
+                  marginBottom: "6px",
+                  fontSize: "12px",
+                  opacity: 0.8,
+                }}
+              >
                 {msg.role === "user" ? "Ty" : "AI"}
               </strong>
               {msg.content}
