@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 
+type AgentDetails = {
+  intent?: string;
+  expert?: string;
+  critic?: string;
+};
+
 type Msg = {
   role: "user" | "assistant";
   content: string;
+  agents?: AgentDetails;
 };
 
 export default function Home() {
@@ -46,6 +53,7 @@ export default function Home() {
         {
           role: "assistant",
           content: data.reply || "Brak odpowiedzi.",
+          agents: data.agents || {},
         },
       ]);
     } catch {
@@ -76,7 +84,7 @@ export default function Home() {
       <div
         style={{
           width: "100%",
-          maxWidth: "760px",
+          maxWidth: "980px",
           display: "flex",
           flexDirection: "column",
           gap: "18px",
@@ -85,7 +93,7 @@ export default function Home() {
         <div style={{ textAlign: "center", marginBottom: "10px" }}>
           <h1 style={{ fontSize: "42px", margin: 0 }}>AI Platform 🚀</h1>
           <p style={{ color: "#b3b3b3", marginTop: "10px" }}>
-            Rozmawiaj z AI jak w prawdziwym czacie
+            Multi-agent AI: odpowiedź, analiza intencji i kontrola jakości
           </p>
         </div>
 
@@ -106,27 +114,122 @@ export default function Home() {
             <div
               key={index}
               style={{
-                alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                maxWidth: "80%",
-                background: msg.role === "user" ? "#4f46e5" : "#1c1c1c",
-                color: "white",
-                padding: "12px 14px",
-                borderRadius: "14px",
-                lineHeight: 1.5,
-                whiteSpace: "pre-wrap",
+                alignSelf: msg.role === "user" ? "flex-end" : "stretch",
+                maxWidth: msg.role === "user" ? "80%" : "100%",
               }}
             >
-              <strong
+              <div
                 style={{
-                  display: "block",
-                  marginBottom: "6px",
-                  fontSize: "12px",
-                  opacity: 0.8,
+                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                  background: msg.role === "user" ? "#4f46e5" : "#1c1c1c",
+                  color: "white",
+                  padding: "12px 14px",
+                  borderRadius: "14px",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                  maxWidth: msg.role === "user" ? "100%" : "85%",
                 }}
               >
-                {msg.role === "user" ? "Ty" : "AI"}
-              </strong>
-              {msg.content}
+                <strong
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontSize: "12px",
+                    opacity: 0.8,
+                  }}
+                >
+                  {msg.role === "user" ? "Ty" : "AI"}
+                </strong>
+                {msg.content}
+              </div>
+
+              {msg.role === "assistant" &&
+                msg.agents &&
+                (msg.agents.intent || msg.agents.expert || msg.agents.critic) && (
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr",
+                      gap: "10px",
+                    }}
+                  >
+                    {msg.agents.intent && (
+                      <div
+                        style={{
+                          background: "#141414",
+                          border: "1px solid #2a2a2a",
+                          borderRadius: "14px",
+                          padding: "14px",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            letterSpacing: "0.4px",
+                            color: "#a78bfa",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          AGENT INTENCJI
+                        </div>
+                        {msg.agents.intent}
+                      </div>
+                    )}
+
+                    {msg.agents.expert && (
+                      <div
+                        style={{
+                          background: "#141414",
+                          border: "1px solid #2a2a2a",
+                          borderRadius: "14px",
+                          padding: "14px",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            letterSpacing: "0.4px",
+                            color: "#60a5fa",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          AGENT EKSPERCKI
+                        </div>
+                        {msg.agents.expert}
+                      </div>
+                    )}
+
+                    {msg.agents.critic && (
+                      <div
+                        style={{
+                          background: "#141414",
+                          border: "1px solid #2a2a2a",
+                          borderRadius: "14px",
+                          padding: "14px",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            letterSpacing: "0.4px",
+                            color: "#34d399",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          AGENT KONTROLI
+                        </div>
+                        {msg.agents.critic}
+                      </div>
+                    )}
+                  </div>
+                )}
             </div>
           ))}
 
@@ -140,7 +243,7 @@ export default function Home() {
                 color: "#bdbdbd",
               }}
             >
-              AI pisze...
+              Agenci analizują...
             </div>
           )}
         </div>
