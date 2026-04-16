@@ -6,8 +6,20 @@ const openai = new OpenAI({
 
 type WorkflowStep = {
   name: string;
-  status: "done" | "failed" | "skipped";
+  status: "pending" | "running" | "done" | "failed" | "skipped";
   details: string;
+};
+
+type SharedState = {
+  userMessage: string;
+  diagnosis: string;
+  planner: string;
+  expert: string;
+  critic: string;
+  repair: string;
+  supervisor: string;
+  workflow: WorkflowStep[];
+  notes: string[];
 };
 
 function extractMessage(body: any): string {
@@ -26,9 +38,7 @@ function extractMessage(body: any): string {
           m.content.trim()
       );
 
-    if (lastUserMessage) {
-      return lastUserMessage.content.trim();
-    }
+    if (lastUserMessage) return lastUserMessage.content.trim();
   }
 
   return "";
@@ -47,139 +57,170 @@ async function runAgent(systemPrompt: string, userPrompt: string) {
   return res.choices[0]?.message?.content?.trim() || "";
 }
 
-async function diagnosisAgent(message: string) {
-  return runAgent(
-    `Jesteś agentem diagnozy intencji użytkownika.
+function summarizeSharedState(state: SharedState) {
+  return `
+WIADOMOŚĆ UŻYTKOWNIKA:
+${state.userMessage}
 
-Twoje zadanie:
-1. Ustal, czego użytkownik naprawdę chce.
-2. Oddziel cel główny od pobocznych.
-3. Oceń, czy pytanie jest konkretne czy zbyt szerokie.
-4. Wskaż brakujące elementy, ale bez zadawania pytań użytkownikowi.
-5. Zrób robocze założenia, jeśli trzeba.
+DOTYCHCZASOWE WYNIKI:
+DIAGNOZA:
+${state.diagnosis || "(brak)"}
 
-Pisz po polsku.
-Bądź konkretny.
-Nie dawaj porad ani planu działania.
+PLANISTA:
+${state.planner || "(brak)"}
 
-Odpowiedz dokładnie w tym formacie:
+EKSPERT:
+${state.expert || "(brak)"}
 
-INTENCJA_GŁÓWNA: ...
-CELE_POBOCZNE: ...
-TYP_POTRZEBY: informacja / plan / decyzja / analiza / strategia / wsparcie
-POZIOM_KONKRETNOŚCI: wysoki / średni / niski
-BRAKI: ...
-ZAŁOŻENIA_ROBOCZE: ...`,
-    message
+KONTROLA:
+${state.critic || "(brak)"}
+
+NAPRAWA:
+${state.repair || "(brak)"}
+
+NOTATKI SYSTEMU:
+${state.notes.length ? state.notes.join("\n") : "(brak)"}
+`.trim();
+}
+
+function createInitialWorkflow(): WorkflowStep[] {
+  return [
+    {
+      name: "Diagnoza",
+      status: "pending",
+      details: "Agent diagnozy jeszcze nie zaczął.",
+    },
+    {
+      name: "Planowanie",
+      status: "pending",
+      details: "Agent planowania jeszcze nie zaczął.",
+    },
+    {
+      name: "Ekspert",
+      status: "pending",
+      details: "Agent ekspercki jeszcze nie zaczął.",
+    },
+    {
+      name: "Kontrola jakości",
+      status: "pending",
+      details: "Agent kontroli jeszcze nie zaczął.",
+    },
+    {
+      name: "Naprawa",
+      status: "skipped",
+      details: "Etap naprawy uruchomi się tylko jeśli kontrola wykryje problem.",
+    },
+    {
+      name: "Supervisor",
+      status: "pending",
+      details: "Supervisor jeszcze nie zaczął syntezy.",
+    },
+  ];
+}
+
+function setWorkflowStep(
+  state: SharedState,
+  stepName: string,
+  patch: Partial<WorkflowStep>
+) {
+  state.workflow = state.workflow.map((step) =>
+    step.name === stepName ? { ...step, ...patch } : step
   );
 }
 
-async function planningAgent(message: string, diagnosis: string) {
-  return runAgent(
-    `Jesteś agentem planowania.
+function makeEvent(event: Record<string, any>) {
+  return `${JSON.stringify(event)}\n`;
+}
 
-Twoje zadanie:
-- nie odpowiadać użytkownikowi,
-- tylko przygotować strukturę myślenia dla eksperta i supervisora.
+async function diagnosisAgent(state: SharedState) {
+  return runAgent(
+    `Jesteś agentem diagnozy.
+Masz ustalić, czego użytkownik naprawdę chce.
 
 Zasady:
-1. Nie pisz gotowej odpowiedzi dla użytkownika.
-2. Nie dawaj ogólników typu "zrób badanie rynku", jeśli nie doprecyzujesz po co.
-3. Rozbij temat na maksymalnie 3 najważniejsze bloki.
-4. Dla każdego bloku napisz, co konkretnie trzeba ocenić.
-5. Zbuduj checklistę kontroli jakości odpowiedzi.
+- nie dawaj porad,
+- nie buduj planu,
+- tylko diagnoza intencji i braków,
+- bądź konkretny i krótki,
+- uwzględnij wspólny stan systemu, ale nie duplikuj treści.
 
-Pisz po polsku.
-Krótko, rzeczowo.
+Odpowiedz dokładnie w formacie:
+INTENCJA_GŁÓWNA: ...
+CELE_POBOCZNE: ...
+POZIOM_KONKRETNOŚCI: wysoki / średni / niski
+BRAKI: ...
+ZAŁOŻENIA_ROBOCZE: ...`,
+    summarizeSharedState(state)
+  );
+}
 
-Odpowiedz dokładnie w tym formacie:
+async function planningAgent(state: SharedState) {
+  return runAgent(
+    `Jesteś agentem planowania.
+Widzisz wspólny stan systemu i wyniki wcześniejszych agentów.
 
+Zadanie:
+- nie odpowiadaj jeszcze użytkownikowi,
+- zbuduj strukturę myślenia dla eksperta i supervisora,
+- wskaż 3 najważniejsze bloki odpowiedzi,
+- podaj checklistę jakości.
+
+Odpowiedz dokładnie w formacie:
 CEL_ODPOWIEDZI: ...
 BLOK_1: ...
-CO_TRZEBA_OCENIĆ_1: ...
+CO_OCENIĆ_1: ...
 BLOK_2: ...
-CO_TRZEBA_OCENIĆ_2: ...
+CO_OCENIĆ_2: ...
 BLOK_3: ...
-CO_TRZEBA_OCENIĆ_3: ...
-CHECKLISTA_JAKOŚCI:
+CO_OCENIĆ_3: ...
+CHECKLISTA:
 - ...
 - ...
 - ...
 - ...`,
-    `Wiadomość użytkownika:
-${message}
-
-Diagnoza:
-${diagnosis}`
+    summarizeSharedState(state)
   );
 }
 
-async function expertAgent(message: string, diagnosis: string, plan: string) {
+async function expertAgent(state: SharedState) {
   return runAgent(
     `Jesteś agentem eksperckim.
+Widzisz wspólny stan systemu oraz wyniki innych agentów.
 
-Masz stworzyć mocną roboczą odpowiedź dla użytkownika.
+Masz stworzyć roboczą odpowiedź dla użytkownika.
 
-Zasady krytyczne:
-1. Zero lania wody.
-2. Zero fraz typu: "warto rozważyć", "możesz także", "dobrym pomysłem jest" bez konkretu.
-3. Odpowiedź ma być praktyczna, ostra i użyteczna.
-4. Jeśli temat dotyczy budowy produktu, biznesu, systemu albo platformy:
-   - wskaż realne opcje,
-   - odetnij zbędne kierunki,
-   - zaproponuj najbliższe sensowne kroki,
-   - pokaż priorytety.
-5. Jeśli pytanie jest szerokie, zawęź je rozsądnie na podstawie diagnozy.
-6. Nie pisz jak coach motywacyjny.
-7. Nie powtarzaj tego samego innymi słowami.
+Zasady:
+- zero lania wody,
+- zero generycznych porad,
+- konkret, priorytety, ruchy do wdrożenia,
+- jeśli temat jest szeroki, zawężaj go rozsądnie na podstawie diagnozy i planu,
+- pisz po polsku,
+- nie opisuj procesu systemu.
 
 Forma:
-- krótki wstęp 1–2 zdania
-- potem konkretne sekcje
-- potem 3 najbliższe kroki
-- potem sekcja "Jak AI może realnie pomóc"
-
-Pisz po polsku.`,
-    `Wiadomość użytkownika:
-${message}
-
-Diagnoza:
-${diagnosis}
-
-Plan:
-${plan}
-
-Przygotuj roboczą odpowiedź ekspercką.`
+- krótki wstęp
+- konkretne sekcje
+- 3 najbliższe kroki
+- sekcja: "Jak AI może realnie pomóc"`,
+    summarizeSharedState(state)
   );
 }
 
-async function criticAgent(
-  message: string,
-  diagnosis: string,
-  plan: string,
-  draftAnswer: string
-) {
+async function criticAgent(state: SharedState) {
   return runAgent(
     `Jesteś bardzo surowym agentem kontroli jakości.
+Widzisz wspólny stan i całą roboczą odpowiedź eksperta.
 
-Masz ocenić odpowiedź ekspercką bez pobłażania.
+Masz ocenić:
+- czy odpowiedź trafia w intencję użytkownika,
+- czy jest konkretna,
+- czy ma priorytety,
+- czy nie jest generyczna,
+- czy użytkownik może coś wdrożyć od razu.
 
-Masz sprawdzić:
-1. Czy odpowiedź naprawdę odpowiada na intencję użytkownika.
-2. Czy jest konkretna.
-3. Czy zawiera realne priorytety.
-4. Czy unika pustych ogólników.
-5. Czy daje użytkownikowi coś, co może wdrożyć od razu.
-6. Czy nie brzmi jak generyczna odpowiedź chatbotowa.
+Jeśli odpowiedź jest zbyt ogólna albo za miękka, ustaw POPRAW.
 
-Masz oznaczyć WERDYKT: POPRAW, jeśli:
-- są ogólniki,
-- brakuje priorytetów,
-- odpowiedź jest zbyt szeroka,
-- odpowiedź brzmi ładnie, ale mało operacyjnie.
-
-Odpowiedz dokładnie w tym formacie:
-
+Odpowiedz dokładnie w formacie:
 WERDYKT: OK albo POPRAW
 OCENA_KONKRETU: 1-10
 NAJWIĘKSZY_PROBLEM: ...
@@ -187,201 +228,47 @@ CO_TRZEBA_POPRAWIĆ:
 - ...
 - ...
 - ...`,
-    `Wiadomość użytkownika:
-${message}
-
-Diagnoza:
-${diagnosis}
-
-Plan:
-${plan}
-
-Odpowiedź ekspercka:
-${draftAnswer}`
+    summarizeSharedState(state)
   );
 }
 
-async function repairAgent(
-  message: string,
-  diagnosis: string,
-  plan: string,
-  draftAnswer: string,
-  criticReview: string
-) {
+async function repairAgent(state: SharedState) {
   return runAgent(
     `Jesteś agentem naprawczym.
+Widzisz wspólny stan, roboczą odpowiedź eksperta i krytykę kontroli jakości.
 
-Dostajesz odpowiedź ekspercką i krytykę kontroli jakości.
-Masz poprawić odpowiedź tak, aby była:
-- bardziej konkretna,
-- bardziej praktyczna,
-- bardziej priorytetyzowana,
-- mniej generyczna.
-
-Zasady:
-1. Zachowaj tylko to, co mocne.
-2. Usuń puste ogólniki.
-3. Dodaj konkretne następne ruchy.
-4. Nie rób odpowiedzi dłuższej tylko po to, żeby była dłuższa.
-5. Efekt ma być wyraźnie lepszy niż wersja pierwotna.
+Twoje zadanie:
+- popraw odpowiedź,
+- usuń ogólniki,
+- dodaj konkrety,
+- nie przedłużaj sztucznie,
+- zachowaj tylko to, co mocne.
 
 Pisz po polsku.`,
-    `Wiadomość użytkownika:
-${message}
-
-Diagnoza:
-${diagnosis}
-
-Plan:
-${plan}
-
-Pierwotna odpowiedź ekspercka:
-${draftAnswer}
-
-Uwagi kontroli jakości:
-${criticReview}
-
-Przygotuj poprawioną wersję odpowiedzi.`
+    summarizeSharedState(state)
   );
 }
 
-async function supervisorAgent(params: {
-  message: string;
-  diagnosis: string;
-  plan: string;
-  finalDraft: string;
-  criticReview: string;
-  workflowSummary: string;
-  wasRepaired: boolean;
-}) {
-  const {
-    message,
-    diagnosis,
-    plan,
-    finalDraft,
-    criticReview,
-    workflowSummary,
-    wasRepaired,
-  } = params;
-
+async function supervisorAgent(state: SharedState) {
   return runAgent(
-    `Jesteś supervisorem systemu wieloagentowego.
+    `Jesteś supervisorem wieloagentowego systemu.
+Widzisz wspólny stan całego procesu.
 
-Pilnujesz, żeby finalna odpowiedź była:
-- spójna,
-- konkretna,
-- użyteczna,
-- niegeneryczna.
+Masz przygotować finalną odpowiedź dla użytkownika.
 
 Zasady:
-1. Nie pokazuj użytkownikowi bałaganu technicznego.
-2. Jeśli odpowiedź była poprawiana, uwzględnij lepszą wersję.
-3. Finalna odpowiedź ma brzmieć jak rezultat mocnego procesu, nie jak automatyczny szablon.
-4. Na końcu dodaj sekcję:
+- odpowiedź ma być spójna, konkretna i użyteczna,
+- ma brzmieć jak wynik mocnego procesu, nie szablon,
+- nie pokazuj technicznego bałaganu,
+- na końcu dodaj krótką sekcję:
 "Jak pracował system:"
 i tam w 4 krótkich punktach opisz:
-- co wykryła diagnoza,
-- jak ustawiono plan,
-- co zrobił ekspert,
-- co zrobiła kontrola jakości.
-5. Ta sekcja ma być krótka, konkretna, bez lania wody.
-
-Pisz po polsku.`,
-    `Wiadomość użytkownika:
-${message}
-
-Diagnoza:
-${diagnosis}
-
-Plan:
-${plan}
-
-Finalny draft do syntezy:
-${finalDraft}
-
-Kontrola jakości:
-${criticReview}
-
-Czy była naprawa odpowiedzi: ${wasRepaired ? "TAK" : "NIE"}
-
-Podsumowanie workflow:
-${workflowSummary}
-
-Przygotuj finalną odpowiedź dla użytkownika.`
+- diagnozę,
+- plan,
+- pracę eksperta,
+- kontrolę jakości / naprawę.`,
+    summarizeSharedState(state)
   );
-}
-
-function buildWorkflow(params: {
-  diagnosis: string;
-  plan: string;
-  expertDraft: string;
-  criticReview: string;
-  repairedDraft?: string;
-}) {
-  const { diagnosis, plan, expertDraft, criticReview, repairedDraft } = params;
-
-  const criticOk = criticReview.includes("WERDYKT: OK");
-  const criticImprove = criticReview.includes("WERDYKT: POPRAW");
-  const usedRepair = Boolean(repairedDraft);
-
-  const workflow: WorkflowStep[] = [
-    {
-      name: "Diagnoza intencji użytkownika",
-      status: diagnosis ? "done" : "failed",
-      details: diagnosis
-        ? "Agent diagnozy ustalił główną intencję, poziom konkretu i robocze założenia."
-        : "Brak diagnozy.",
-    },
-    {
-      name: "Planowanie struktury odpowiedzi",
-      status: plan ? "done" : "failed",
-      details: plan
-        ? "Agent planowania przygotował bloki analizy i checklistę jakości."
-        : "Brak planu.",
-    },
-    {
-      name: "Wersja robocza odpowiedzi eksperckiej",
-      status: expertDraft ? "done" : "failed",
-      details: expertDraft
-        ? "Agent ekspercki przygotował pierwszą wersję odpowiedzi."
-        : "Brak odpowiedzi eksperckiej.",
-    },
-    {
-      name: "Kontrola jakości odpowiedzi",
-      status: criticOk ? "done" : criticImprove ? "failed" : "failed",
-      details: criticOk
-        ? "Kontrola jakości zatwierdziła odpowiedź bez potrzeby poprawy."
-        : criticImprove
-        ? "Kontrola jakości wykryła zbyt niski poziom konkretu i wymusiła poprawę."
-        : "Nie udało się jednoznacznie ocenić odpowiedzi.",
-    },
-    {
-      name: "Naprawa odpowiedzi po kontroli",
-      status: criticImprove ? (usedRepair ? "done" : "failed") : "skipped",
-      details: criticImprove
-        ? usedRepair
-          ? "Agent naprawczy poprawił odpowiedź zgodnie z uwagami kontroli."
-          : "Wymagana była poprawa, ale nie powstała poprawiona wersja."
-        : "Ten etap nie był potrzebny.",
-    },
-    {
-      name: "Synteza supervisora",
-      status: "done",
-      details:
-        "Supervisor zebrał wyniki, sprawdził proces i złożył finalną odpowiedź.",
-    },
-  ];
-
-  return workflow;
-}
-
-function workflowToText(workflow: WorkflowStep[]) {
-  return workflow
-    .map(
-      (step, index) =>
-        `${index + 1}. ${step.name} | status: ${step.status} | ${step.details}`
-    )
-    .join("\n");
 }
 
 export async function POST(req: Request) {
@@ -395,70 +282,200 @@ export async function POST(req: Request) {
           error: "NO_VALID_MESSAGE",
           details:
             "Backend nie dostał poprawnego pola 'message' ani 'messages'.",
-          receivedKeys: Object.keys(body || {}),
         },
         { status: 400 }
       );
     }
 
-    const diagnosis = await diagnosisAgent(message);
-    const plan = await planningAgent(message, diagnosis);
-    const expertDraft = await expertAgent(message, diagnosis, plan);
-    const criticReview = await criticAgent(
-      message,
-      diagnosis,
-      plan,
-      expertDraft
-    );
+    const state: SharedState = {
+      userMessage: message,
+      diagnosis: "",
+      planner: "",
+      expert: "",
+      critic: "",
+      repair: "",
+      supervisor: "",
+      workflow: createInitialWorkflow(),
+      notes: [],
+    };
 
-    const needsRepair = criticReview.includes("WERDYKT: POPRAW");
+    const encoder = new TextEncoder();
 
-    let repairedDraft = "";
-    if (needsRepair) {
-      repairedDraft = await repairAgent(
-        message,
-        diagnosis,
-        plan,
-        expertDraft,
-        criticReview
-      );
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (payload: Record<string, any>) => {
+          controller.enqueue(encoder.encode(makeEvent(payload)));
+        };
 
-    const finalDraft = repairedDraft || expertDraft;
+        try {
+          send({
+            type: "init",
+            workflow: state.workflow,
+            agents: {
+              diagnosis: "",
+              planner: "",
+              expert: "",
+              critic: "",
+              repair: "",
+              supervisor: "",
+            },
+          });
 
-    const workflow = buildWorkflow({
-      diagnosis,
-      plan,
-      expertDraft,
-      criticReview,
-      repairedDraft,
-    });
+          setWorkflowStep(state, "Diagnoza", {
+            status: "running",
+            details: "Agent diagnozy analizuje intencję użytkownika.",
+          });
+          send({ type: "workflow", workflow: state.workflow });
 
-    const workflowSummary = workflowToText(workflow);
+          state.diagnosis = await diagnosisAgent(state);
+          state.notes.push("Diagnoza ukończona.");
+          setWorkflowStep(state, "Diagnoza", {
+            status: "done",
+            details: "Agent diagnozy określił intencję, braki i założenia.",
+          });
+          send({
+            type: "agent",
+            agent: "diagnosis",
+            content: state.diagnosis,
+            workflow: state.workflow,
+          });
 
-    const finalReply = await supervisorAgent({
-      message,
-      diagnosis,
-      plan,
-      finalDraft,
-      criticReview,
-      workflowSummary,
-      wasRepaired: needsRepair,
-    });
+          setWorkflowStep(state, "Planowanie", {
+            status: "running",
+            details: "Planista układa strukturę odpowiedzi w oparciu o diagnozę.",
+          });
+          send({ type: "workflow", workflow: state.workflow });
 
-    return Response.json({
-      reply: finalReply,
-      workflow,
-      agents: {
-        diagnosis,
-        planner: plan,
-        expert: expertDraft,
-        critic: criticReview,
-        supervisor: needsRepair
-          ? "Supervisor użył wersji poprawionej po krytyce jakości."
-          : "Supervisor zatwierdził i zsyntetyzował odpowiedź bez etapu naprawy.",
+          state.planner = await planningAgent(state);
+          state.notes.push("Planowanie ukończone.");
+          setWorkflowStep(state, "Planowanie", {
+            status: "done",
+            details: "Planista przygotował bloki odpowiedzi i checklistę jakości.",
+          });
+          send({
+            type: "agent",
+            agent: "planner",
+            content: state.planner,
+            workflow: state.workflow,
+          });
+
+          setWorkflowStep(state, "Ekspert", {
+            status: "running",
+            details: "Ekspert buduje roboczą odpowiedź, widząc wspólny stan.",
+          });
+          send({ type: "workflow", workflow: state.workflow });
+
+          state.expert = await expertAgent(state);
+          state.notes.push("Wersja ekspercka gotowa.");
+          setWorkflowStep(state, "Ekspert", {
+            status: "done",
+            details: "Ekspert przygotował pierwszą wersję odpowiedzi.",
+          });
+          send({
+            type: "agent",
+            agent: "expert",
+            content: state.expert,
+            workflow: state.workflow,
+          });
+
+          setWorkflowStep(state, "Kontrola jakości", {
+            status: "running",
+            details: "Kontrola jakości sprawdza trafność i poziom konkretu.",
+          });
+          send({ type: "workflow", workflow: state.workflow });
+
+          state.critic = await criticAgent(state);
+          state.notes.push("Kontrola jakości zakończona.");
+
+          const needsRepair = state.critic.includes("WERDYKT: POPRAW");
+
+          setWorkflowStep(state, "Kontrola jakości", {
+            status: needsRepair ? "failed" : "done",
+            details: needsRepair
+              ? "Kontrola jakości odrzuciła wersję ekspercką i wymusiła naprawę."
+              : "Kontrola jakości zatwierdziła wersję ekspercką.",
+          });
+          send({
+            type: "agent",
+            agent: "critic",
+            content: state.critic,
+            workflow: state.workflow,
+          });
+
+          if (needsRepair) {
+            setWorkflowStep(state, "Naprawa", {
+              status: "running",
+              details: "Agent naprawczy poprawia odpowiedź po krytyce.",
+            });
+            send({ type: "workflow", workflow: state.workflow });
+
+            state.repair = await repairAgent(state);
+            state.notes.push("Naprawa wykonana.");
+            setWorkflowStep(state, "Naprawa", {
+              status: "done",
+              details: "Agent naprawczy przygotował lepszą wersję odpowiedzi.",
+            });
+            send({
+              type: "agent",
+              agent: "repair",
+              content: state.repair,
+              workflow: state.workflow,
+            });
+          }
+
+          setWorkflowStep(state, "Supervisor", {
+            status: "running",
+            details: "Supervisor scala wszystko w jedną finalną odpowiedź.",
+          });
+          send({ type: "workflow", workflow: state.workflow });
+
+          if (state.repair) {
+            state.expert = state.repair;
+          }
+
+          state.supervisor = await supervisorAgent(state);
+          state.notes.push("Supervisor zakończył syntezę.");
+          setWorkflowStep(state, "Supervisor", {
+            status: "done",
+            details: "Supervisor przygotował finalną odpowiedź dla użytkownika.",
+          });
+
+          send({
+            type: "final",
+            reply: state.supervisor,
+            workflow: state.workflow,
+            agents: {
+              diagnosis: state.diagnosis,
+              planner: state.planner,
+              expert: state.expert,
+              critic: state.critic,
+              repair: state.repair,
+              supervisor:
+                state.repair
+                  ? "Supervisor użył poprawionej wersji odpowiedzi."
+                  : "Supervisor zatwierdził odpowiedź bez etapu naprawy.",
+            },
+            meta: "LIVE_SHARED_STATE_OK",
+          });
+
+          controller.close();
+        } catch (error: any) {
+          send({
+            type: "error",
+            error: "SYSTEM_CRASH",
+            details: error?.message || "Unknown error",
+          });
+          controller.close();
+        }
       },
-      meta: "SUPERVISOR_STRICT_WORKFLOW_OK",
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
     });
   } catch (err: any) {
     return Response.json(
