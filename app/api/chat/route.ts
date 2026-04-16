@@ -55,8 +55,8 @@ function inferTopic(text: string) {
 
   if (
     t.includes("relac") ||
-    t.includes("on") ||
     t.includes("ona") ||
+    t.includes("on") ||
     t.includes("partner") ||
     t.includes("dziewczyn") ||
     t.includes("chłopak") ||
@@ -170,29 +170,17 @@ function buildQuiz(topic: string): QuizPayload {
         {
           id: "q1",
           question: "Jak często ostatnio czujesz napięcie w ciele lub głowie?",
-          options: [
-            "A) Rzadko",
-            "B) Czasem",
-            "C) Bardzo często",
-          ],
+          options: ["A) Rzadko", "B) Czasem", "C) Bardzo często"],
         },
         {
           id: "q2",
           question: "Jak wygląda Twoja energia w ostatnich dniach?",
-          options: [
-            "A) Dość stabilna",
-            "B) Falująca",
-            "C) Niska lub poszarpana",
-          ],
+          options: ["A) Dość stabilna", "B) Falująca", "C) Niska lub poszarpana"],
         },
         {
           id: "q3",
           question: "Jak oceniasz swoją koncentrację?",
-          options: [
-            "A) Jest okej",
-            "B) Bywa różnie",
-            "C) Rozsypuje się często",
-          ],
+          options: ["A) Jest okej", "B) Bywa różnie", "C) Rozsypuje się często"],
         },
         {
           id: "q4",
@@ -206,11 +194,7 @@ function buildQuiz(topic: string): QuizPayload {
         {
           id: "q5",
           question: "Czy umiesz nazwać, co dokładnie czujesz?",
-          options: [
-            "A) Zazwyczaj tak",
-            "B) Czasami",
-            "C) Raczej mam chaos",
-          ],
+          options: ["A) Zazwyczaj tak", "B) Czasami", "C) Raczej mam chaos"],
         },
       ],
       resultGuide: {
