@@ -17,46 +17,69 @@ function randomFood(snake: Point[]) {
       y: Math.floor(Math.random() * GRID),
     };
 
-    if (!snake.some((s) => s.x === point.x && s.y === point.y)) {
+    if (!snake.some((segment) => segment.x === point.x && segment.y === point.y)) {
       return point;
     }
   }
 }
 
+function initialSnake() {
+  return [
+    { x: 8, y: 10 },
+    { x: 7, y: 10 },
+    { x: 6, y: 10 },
+  ];
+}
+
 export default function SnakeGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { addReward } = useApp();
+  const { state, grantRewards, recordGameScore } = useApp();
 
-  const [snake, setSnake] = useState<Point[]>([
-    { x: 10, y: 10 },
-    { x: 9, y: 10 },
-    { x: 8, y: 10 },
-  ]);
+  const [snake, setSnake] = useState<Point[]>(initialSnake);
   const [dir, setDir] = useState<Dir>("RIGHT");
-  const [food, setFood] = useState<Point>({ x: 14, y: 10 });
-  const [running, setRunning] = useState(false);
+  const [food, setFood] = useState<Point>({ x: 13, y: 10 });
+  const [phase, setPhase] = useState<"idle" | "live" | "paused" | "over">(
+    "idle"
+  );
   const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
+  const [submittedScore, setSubmittedScore] = useState<number | null>(null);
+
+  function changeDirection(next: Dir) {
+    setDir((current) => {
+      if (next === "UP" && current === "DOWN") return current;
+      if (next === "DOWN" && current === "UP") return current;
+      if (next === "LEFT" && current === "RIGHT") return current;
+      if (next === "RIGHT" && current === "LEFT") return current;
+      return next;
+    });
+  }
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowUp" && dir !== "DOWN") setDir("UP");
-      if (e.key === "ArrowDown" && dir !== "UP") setDir("DOWN");
-      if (e.key === "ArrowLeft" && dir !== "RIGHT") setDir("LEFT");
-      if (e.key === "ArrowRight" && dir !== "LEFT") setDir("RIGHT");
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "ArrowUp") changeDirection("UP");
+      if (event.key === "ArrowDown") changeDirection("DOWN");
+      if (event.key === "ArrowLeft") changeDirection("LEFT");
+      if (event.key === "ArrowRight") changeDirection("RIGHT");
+      if (event.key === " ") {
+        setPhase((current) => (current === "live" ? "paused" : "live"));
+      }
     }
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dir]);
+  }, []);
 
   useEffect(() => {
-    if (!running || gameOver) return;
+    if (phase !== "live") {
+      return;
+    }
 
-    const interval = setInterval(() => {
-      setSnake((prev) => {
-        const head = prev[0];
-        let nextHead = { ...head };
+    const speed = Math.max(84, 138 - score * 3);
+
+    const interval = window.setInterval(() => {
+      setSnake((currentSnake) => {
+        const head = currentSnake[0];
+        const nextHead = { ...head };
 
         if (dir === "UP") nextHead.y -= 1;
         if (dir === "DOWN") nextHead.y += 1;
@@ -69,34 +92,63 @@ export default function SnakeGame() {
           nextHead.x >= GRID ||
           nextHead.y >= GRID;
 
-        const hitSelf = prev.some(
-          (p) => p.x === nextHead.x && p.y === nextHead.y
+        const hitSelf = currentSnake.some(
+          (segment) => segment.x === nextHead.x && segment.y === nextHead.y
         );
 
         if (hitWall || hitSelf) {
-          setGameOver(true);
-          setRunning(false);
-          return prev;
+          setPhase("over");
+          return currentSnake;
         }
 
-        const ate = nextHead.x === food.x && nextHead.y === food.y;
-        const newSnake = [nextHead, ...prev];
+        const ateFood = nextHead.x === food.x && nextHead.y === food.y;
+        const nextSnake = [nextHead, ...currentSnake];
 
-        if (!ate) {
-          newSnake.pop();
+        if (!ateFood) {
+          nextSnake.pop();
         } else {
-          setScore((s) => s + 1);
-          setFood(randomFood(newSnake));
-          addReward("diamonds", 1); // Dodaj diament za jedzenie
-          addReward("light", 2); // Dodaj światło
+          const nextScore = score + 1;
+          setScore(nextScore);
+          setFood(randomFood(nextSnake));
+          grantRewards({
+            diamonds: nextScore % 4 === 0 ? 1 : 0,
+            light: 4,
+            xp: 6,
+          });
         }
 
-        return newSnake;
+        return nextSnake;
       });
-    }, 130);
+    }, speed);
 
-    return () => clearInterval(interval);
-  }, [running, dir, food, gameOver, addReward]);
+    return () => window.clearInterval(interval);
+  }, [phase, dir, food, score, grantRewards]);
+
+  useEffect(() => {
+    if (phase !== "over" || submittedScore === score) {
+      return;
+    }
+
+    recordGameScore("snake", score);
+
+    if (score > 0) {
+      grantRewards(
+        {
+          diamonds: Math.max(1, Math.floor(score / 5)),
+          light: score * 2,
+          xp: score * 4,
+        },
+        {
+          title: "Snake session complete",
+          detail: `Run zakonczony z wynikiem ${score}. Rewardy zapisano globalnie.`,
+          source: "game",
+          accent: "#7cf0c2",
+        }
+      );
+    }
+
+    setSubmittedScore(score);
+  }, [phase, score, submittedScore, recordGameScore, grantRewards]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -107,37 +159,42 @@ export default function SnakeGame() {
 
     ctx.clearRect(0, 0, SIZE, SIZE);
 
-    const bg = ctx.createLinearGradient(0, 0, 0, SIZE);
-    bg.addColorStop(0, "rgba(255,255,255,0.9)");
-    bg.addColorStop(1, "rgba(230,247,255,0.7)");
-    ctx.fillStyle = bg;
+    const background = ctx.createLinearGradient(0, 0, 0, SIZE);
+    background.addColorStop(0, "rgba(6, 18, 31, 0.96)");
+    background.addColorStop(1, "rgba(15, 37, 62, 0.94)");
+    ctx.fillStyle = background;
     ctx.fillRect(0, 0, SIZE, SIZE);
 
-    ctx.strokeStyle = "rgba(120, 210, 255, 0.18)";
-    for (let i = 0; i <= GRID; i++) {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
+    for (let index = 0; index <= GRID; index += 1) {
       ctx.beginPath();
-      ctx.moveTo(i * CELL, 0);
-      ctx.lineTo(i * CELL, SIZE);
+      ctx.moveTo(index * CELL, 0);
+      ctx.lineTo(index * CELL, SIZE);
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(0, i * CELL);
-      ctx.lineTo(SIZE, i * CELL);
+      ctx.moveTo(0, index * CELL);
+      ctx.lineTo(SIZE, index * CELL);
       ctx.stroke();
     }
 
-    ctx.fillStyle = "#5ed3ff";
-    snake.forEach((part, idx) => {
-      ctx.fillStyle = idx === 0 ? "#31b8ff" : "#7ddfff";
-      ctx.fillRect(part.x * CELL + 1, part.y * CELL + 1, CELL - 2, CELL - 2);
+    snake.forEach((segment, index) => {
+      const inset = index === 0 ? 1 : 2;
+      ctx.fillStyle = index === 0 ? "#ffba6b" : "#67d8ff";
+      ctx.fillRect(
+        segment.x * CELL + inset,
+        segment.y * CELL + inset,
+        CELL - inset * 2,
+        CELL - inset * 2
+      );
     });
 
-    ctx.fillStyle = "#ff7dd8";
+    ctx.fillStyle = "#7cf0c2";
     ctx.beginPath();
     ctx.arc(
       food.x * CELL + CELL / 2,
       food.y * CELL + CELL / 2,
-      CELL / 2.6,
+      CELL / 2.5,
       0,
       Math.PI * 2
     );
@@ -145,35 +202,43 @@ export default function SnakeGame() {
   }, [snake, food]);
 
   function reset() {
-    const freshSnake = [
-      { x: 10, y: 10 },
-      { x: 9, y: 10 },
-      { x: 8, y: 10 },
-    ];
-    setSnake(freshSnake);
+    const nextSnake = initialSnake();
+    setSnake(nextSnake);
     setDir("RIGHT");
-    setFood(randomFood(freshSnake));
+    setFood(randomFood(nextSnake));
     setScore(0);
-    setGameOver(false);
-    setRunning(false);
+    setSubmittedScore(null);
+    setPhase("idle");
   }
+
+  const best = Math.max(state.gameStats.snakeBest, submittedScore ?? 0);
 
   return (
     <div className="game-shell">
-      <div className="cards-grid-3">
+      <div className="cards-grid-4">
         <div className="kpi-card">
           <div className="kpi-label">Wynik</div>
           <div className="kpi-value">{score}</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Stan</div>
+          <div className="kpi-label">Best</div>
+          <div className="kpi-value">{best}</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Tryb</div>
           <div className="kpi-value">
-            {gameOver ? "Koniec" : running ? "Live" : "Stop"}
+            {phase === "live"
+              ? "LIVE"
+              : phase === "paused"
+                ? "PAUSE"
+                : phase === "over"
+                  ? "END"
+                  : "READY"}
           </div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Nagroda</div>
-          <div className="kpi-value">💎 {score} ☀️ {score * 2}</div>
+          <div className="kpi-label">Return</div>
+          <div className="kpi-value">{score * 2} LT</div>
         </div>
       </div>
 
@@ -186,17 +251,48 @@ export default function SnakeGame() {
         />
 
         <div className="button-row">
-          <button className="action-btn" onClick={() => setRunning(true)}>
-            Start
+          <button
+            className="action-btn"
+            onClick={() =>
+              setPhase((current) => {
+                if (current === "live") return "paused";
+                return "live";
+              })
+            }
+          >
+            {phase === "live" ? "Pauza" : phase === "paused" ? "Wznow" : "Start"}
           </button>
           <button className="action-btn secondary" onClick={reset}>
             Reset
           </button>
         </div>
 
+        <div className="dpad">
+          <div />
+          <button className="dpad-btn" onClick={() => changeDirection("UP")}>
+            UP
+          </button>
+          <div />
+          <button className="dpad-btn" onClick={() => changeDirection("LEFT")}>
+            LT
+          </button>
+          <div className="dpad-btn" style={{ opacity: 0.5, cursor: "default" }}>
+            GO
+          </div>
+          <button className="dpad-btn" onClick={() => changeDirection("RIGHT")}>
+            RT
+          </button>
+          <div />
+          <button className="dpad-btn" onClick={() => changeDirection("DOWN")}>
+            DN
+          </button>
+          <div />
+        </div>
+
         <div className="result-box">
-          Sterowanie: strzałki ↑ ↓ ← →. Gra kończy się po uderzeniu w ścianę
-          albo w siebie. Każdy punkt daje nagrodę!
+          Zbieraj swiatlo i utrzymuj spokojny rytm ruchu. Gra konczy sie po
+          uderzeniu w sciane albo w siebie, a kazdy punkt zasila wspolny system
+          rewardow w calej aplikacji.
         </div>
       </div>
     </div>

@@ -1,62 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AppShell from "@/components/AppShell";
+import SafetyNotice from "@/components/SafetyNotice";
+import { useApp, type AppState } from "@/contexts/AppContext";
 
-type ProfileConfig = {
-  displayName: string;
-  title: string;
-  aura: string;
-  accent: string;
-  avatar: string;
-  badge: string;
-  bio: string;
-};
+type ProfilePreview = Partial<AppState["profile"]>;
 
-const defaultProfileConfig: ProfileConfig = {
-  displayName: "Luq",
-  title: "Pilot Światła",
-  aura: "Spokojna, skupiona, nastawiona na kierunek i rozwój",
-  accent: "#63d9ff",
-  avatar: "🪽",
-  badge: "Pierwszy lot",
-  bio: "Badam relacje, emocje i nowe ścieżki rozwoju z pomocą AI.",
-};
+const profilePrompts = [
+  "Ustaw spokojny, premium profil z lekkim zlotym akcentem i tytulem Guardian of Calm.",
+  "Nadaj mi bardziej social vibe, jasny status i odrobine energii premium.",
+  "Zmien profil na bardziej wyciszony, profesjonalny i bezpieczny.",
+];
 
 export default function ProfilePage() {
-  const [profileConfig, setProfileConfig] =
-    useState<ProfileConfig>(defaultProfileConfig);
+  const { state, derived, updateProfile } = useApp();
   const [profilePrompt, setProfilePrompt] = useState("");
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [pendingProfileConfig, setPendingProfileConfig] =
-    useState<Partial<ProfileConfig> | null>(null);
+    useState<ProfilePreview | null>(null);
   const [profileExplanation, setProfileExplanation] = useState("");
-  const [previewProfileChanges, setPreviewProfileChanges] = useState(false);
 
-  useEffect(() => {
-    try {
-      const savedProfile = localStorage.getItem("heaven-profile-config");
-      if (savedProfile) setProfileConfig(JSON.parse(savedProfile));
-    } catch {}
-  }, []);
+  const preview = pendingProfileConfig
+    ? { ...state.profile, ...pendingProfileConfig }
+    : state.profile;
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "heaven-profile-config",
-        JSON.stringify(profileConfig)
-      );
-    } catch {}
-  }, [profileConfig]);
+  async function runProfilePreview(promptText?: string) {
+    const prompt = (promptText ?? profilePrompt).trim();
 
-  const effectiveProfileConfig =
-    previewProfileChanges && pendingProfileConfig
-      ? { ...profileConfig, ...pendingProfileConfig }
-      : profileConfig;
+    if (!prompt) {
+      return;
+    }
 
-  async function runProfilePreview() {
-    if (!profilePrompt.trim()) return;
-    setProfileLoading(true);
+    setLoading(true);
 
     try {
       const response = await fetch("/api/chat", {
@@ -66,149 +42,141 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({
           action: "profile",
-          prompt: profilePrompt,
+          prompt,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data?.ok) {
-        alert(data?.details || data?.error || "Błąd edytora profilu.");
+        setProfileExplanation(
+          data?.details || data?.error || "Nie udalo sie wygenerowac podgladu profilu."
+        );
         return;
       }
 
       setPendingProfileConfig(data.preview || null);
       setProfileExplanation(data.explanation || "");
-      setPreviewProfileChanges(true);
-    } catch (error: any) {
-      alert(error?.message || "Błąd połączenia.");
+      setProfilePrompt(prompt);
+    } catch (error) {
+      setProfileExplanation(
+        error instanceof Error
+          ? error.message
+          : "Blad polaczenia przy tworzeniu podgladu."
+      );
     } finally {
-      setProfileLoading(false);
+      setLoading(false);
     }
   }
 
   function acceptProfilePreview() {
-    if (!pendingProfileConfig) return;
-    setProfileConfig((prev) => ({
-      ...prev,
-      ...pendingProfileConfig,
-    }));
-    setPendingProfileConfig(null);
-    setProfileExplanation("");
-    setPreviewProfileChanges(false);
-  }
+    if (!pendingProfileConfig) {
+      return;
+    }
 
-  function discardProfilePreview() {
+    updateProfile(pendingProfileConfig);
     setPendingProfileConfig(null);
-    setProfileExplanation("");
-    setPreviewProfileChanges(false);
+    setProfileExplanation("Zmiany zostaly zapisane globalnie w profilu.");
   }
 
   return (
     <AppShell
       title="Profil"
-      subtitle="Użytkownik może zmieniać wygląd i styl profilu komendą jak w kreatorze live."
-    >
-      <div className="cards-grid-2">
-        <div className="portal-card glass" style={{ minHeight: 260 }}>
-          <div
-            className="result-box"
-            style={{
-              borderColor: effectiveProfileConfig.accent,
-              boxShadow: `0 20px 50px ${effectiveProfileConfig.accent}30`,
-            }}
-          >
-            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-              <div
-                style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: 22,
-                  display: "grid",
-                  placeItems: "center",
-                  fontSize: 34,
-                  background: "rgba(255,255,255,0.92)",
-                  boxShadow: `0 0 28px ${effectiveProfileConfig.accent}`,
-                  flexShrink: 0,
-                }}
-              >
-                {effectiveProfileConfig.avatar}
-              </div>
-
-              <div>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "#1d6497" }}>
-                  {effectiveProfileConfig.displayName}
-                </div>
-                <div style={{ fontWeight: 800, color: "#4580aa", marginTop: 2 }}>
-                  {effectiveProfileConfig.title}
-                </div>
-                <div style={{ marginTop: 10, color: "#4f7da4", lineHeight: 1.6 }}>
-                  {effectiveProfileConfig.aura}
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      borderRadius: 999,
-                      padding: "8px 12px",
-                      fontSize: 13,
-                      fontWeight: 900,
-                      color: "#2f6d9c",
-                      border: "1px solid rgba(255,255,255,0.92)",
-                      background: `${effectiveProfileConfig.accent}22`,
-                    }}
-                  >
-                    {effectiveProfileConfig.badge}
-                  </span>
-                </div>
-                <p style={{ marginTop: 12, color: "#4f7da4", lineHeight: 1.6 }}>
-                  {effectiveProfileConfig.bio}
-                </p>
-              </div>
+      subtitle="Profil ma czuc sie jak osobisty hub premium: styl, badge, historia postepu i status, do ktorego chce sie wracac codziennie."
+      heroCode="PF"
+      rightPanel={
+        <div className="right-list">
+          <div className="kpi-card highlight">
+            <div className="kpi-label">Aktywnosc</div>
+            <div className="kpi-value">{state.journalEntries.length}</div>
+            <div className="small-note">
+              Wpisy journal + odblokowane achievementy tworza wrazenie rosnacego profilu.
             </div>
+          </div>
+          <div className="list-panel">
+            <div className="section-headline">Achievementy</div>
+            {derived.achievements.map((achievement) => (
+              <div key={achievement.id} className="achievement-row">
+                <strong>{achievement.title}</strong>
+                <div className="small-note">{achievement.detail}</div>
+              </div>
+            ))}
+          </div>
+          <SafetyNotice compact />
+        </div>
+      }
+    >
+      <div className="profile-banner">
+        <div className="profile-hero">
+          <div
+            className="profile-avatar"
+            style={{ borderColor: `${preview.accent}88`, boxShadow: `0 0 32px ${preview.accent}44` }}
+          >
+            {preview.avatar}
+          </div>
+          <div className="profile-copy">
+            <h2>{preview.displayName}</h2>
+            <p>{preview.title}</p>
+            <div className="status-pill">{preview.statusLine}</div>
           </div>
         </div>
 
-        <div className="portal-card glass">
-          <div className="portal-card-title">Edytor profilu komendą</div>
-          <div className="portal-card-text">
-            Np. „Ustaw mój profil na złoto-niebieski, nadaj mi tytuł Kapitan
-            Światła, dodaj orła jako avatar i bardziej bojowy klimat.”
-          </div>
+        <div className="tag-row" style={{ marginTop: 18 }}>
+          <span className="tag-pill">{preview.badge}</span>
+          <span className="tag-pill">{preview.clan}</span>
+          {preview.tags.map((tag) => (
+            <span key={tag} className="tag-pill">
+              {tag}
+            </span>
+          ))}
+        </div>
 
-          <div className="stack" style={{ marginTop: 14 }}>
-            <textarea
-              className="textarea"
-              rows={5}
-              value={profilePrompt}
-              onChange={(e) => setProfilePrompt(e.target.value)}
-              placeholder="Napisz jak ma wyglądać Twój profil..."
-            />
+        <p style={{ marginTop: 18 }} className="reward-copy">
+          {preview.bio}
+        </p>
+        <p className="reward-copy">{preview.aura}</p>
+      </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button
-                className="action-btn"
-                onClick={runProfilePreview}
-                disabled={profileLoading}
-              >
-                {profileLoading ? "AI projektuje..." : "Stwórz podgląd"}
+      <div className="daily-grid">
+        <div className="editor-shell">
+          <div className="section-headline">Edytor profilu komenda</div>
+          <textarea
+            className="textarea"
+            rows={5}
+            value={profilePrompt}
+            onChange={(event) => setProfilePrompt(event.target.value)}
+            placeholder="Napisz, jak ma wygladac Twoj profil: klimat, tytul, badge, avatar, ton..."
+          />
+          <div className="button-row">
+            <button
+              className="action-btn"
+              onClick={() => runProfilePreview()}
+              disabled={loading}
+            >
+              {loading ? "Tworzenie..." : "Stworz podglad"}
+            </button>
+            {pendingProfileConfig ? (
+              <button className="action-btn secondary" onClick={acceptProfilePreview}>
+                Zapisz
               </button>
+            ) : null}
+          </div>
+          {profileExplanation ? <div className="result-box">{profileExplanation}</div> : null}
+        </div>
 
-              {pendingProfileConfig && (
-                <>
-                  <button className="action-btn secondary" onClick={acceptProfilePreview}>
-                    Akceptuję
-                  </button>
-                  <button className="action-btn secondary" onClick={discardProfilePreview}>
-                    Odrzuć
-                  </button>
-                </>
-              )}
-            </div>
-
-            {profileExplanation && <div className="result-box">{profileExplanation}</div>}
+        <div className="editor-shell">
+          <div className="section-headline">Gotowe kierunki</div>
+          <div className="sheet-list">
+            {profilePrompts.map((prompt) => (
+              <button
+                key={prompt}
+                className="reward-item"
+                onClick={() => runProfilePreview(prompt)}
+              >
+                <span className="reward-title">Preview</span>
+                <span className="reward-copy">{prompt}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>

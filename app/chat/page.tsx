@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
+import SafetyNotice from "@/components/SafetyNotice";
+import { useApp, type ChatStyle } from "@/contexts/AppContext";
 
 type ModuleType =
   | "general"
@@ -10,16 +12,14 @@ type ModuleType =
   | "quiz"
   | "task";
 
-type QuizQuestion = {
-  id: string;
-  question: string;
-  options: string[];
-};
-
 type QuizPayload = {
   title: string;
   intro: string;
-  questions: QuizQuestion[];
+  questions: Array<{
+    id: string;
+    question: string;
+    options: string[];
+  }>;
   resultGuide: {
     mostlyA: string;
     mostlyB: string;
@@ -36,90 +36,190 @@ type TaskPayload = {
   reward: string;
 };
 
-type TextMessage = {
-  id: string;
-  kind: "text";
-  role: "user" | "assistant";
-  content: string;
+type ChatMessage =
+  | {
+      id: string;
+      kind: "text";
+      role: "user" | "assistant";
+      content: string;
+    }
+  | {
+      id: string;
+      kind: "quiz";
+      role: "assistant";
+      quiz: QuizPayload;
+    }
+  | {
+      id: string;
+      kind: "task";
+      role: "assistant";
+      task: TaskPayload;
+    };
+
+const moduleMeta: Record<
+  ModuleType,
+  { title: string; copy: string; prompts: string[] }
+> = {
+  general: {
+    title: "Reset i kierunek",
+    copy: "Krotka analiza chaosu, decyzji i kolejnych krokow.",
+    prompts: [
+      "Mam za duzo w glowie i potrzebuje prostego planu minimum.",
+      "Pomoz mi uporzadkowac, co jest teraz najwazniejsze.",
+      "Chce odzyskac spokoj bez długiego elaboratu.",
+    ],
+  },
+  relationships: {
+    title: "Relacje",
+    copy: "Sygnaly, granice, wzorce komunikacji i poziom spokoju w relacji.",
+    prompts: [
+      "Nie wiem, czy ta relacja daje mi spokoj czy tylko napiecie.",
+      "Pomoz mi nazwac czerwone flagi bez przesady i bez bagatelizowania.",
+      "Jak powiedziec o granicy spokojnie i jasno?",
+    ],
+  },
+  emotions: {
+    title: "Emocje",
+    copy: "Nazywanie stanu, obniżanie tarcia i prosty ruch dalej.",
+    prompts: [
+      "Mam napiecie i chce zrozumiec, czego teraz potrzebuje.",
+      "Pomoz mi nazwac to, co dzieje sie dzisiaj we mnie.",
+      "Jak zejsc z chaosu do jednego prostego kroku?",
+    ],
+  },
+  quiz: {
+    title: "Quiz premium-light",
+    copy: "Szybki test generowany przez AI pod aktualny temat.",
+    prompts: [
+      "Daj mi quiz o moim przeciazeniu.",
+      "Stworz krotki test relacji.",
+      "Zrob mi test granic.",
+    ],
+  },
+  task: {
+    title: "Task dnia",
+    copy: "Mikro-zadanie, ktore da sie zrobic jeszcze dzisiaj.",
+    prompts: [
+      "Daj mi plan minimum na dzisiaj.",
+      "Jaki jest moj jeden sensowny krok?",
+      "Stworz mi zadanie pod odzyskanie spokoju.",
+    ],
+  },
 };
 
-type QuizMessage = {
-  id: string;
-  kind: "quiz";
-  role: "assistant";
-  quiz: QuizPayload;
-};
+const styleOptions: Array<{
+  id: ChatStyle;
+  title: string;
+  copy: string;
+}> = [
+  {
+    id: "nebula",
+    title: "Nebula",
+    copy: "Miękki, spokojny styl premium z glowem.",
+  },
+  {
+    id: "social",
+    title: "Social",
+    copy: "Lżejszy, cieplejszy rytm bardziej lifestyle niż studio.",
+  },
+  {
+    id: "focus",
+    title: "Focus",
+    copy: "Mniej ozdobników, więcej koncentracji i konkretu.",
+  },
+];
 
-type TaskMessage = {
-  id: string;
-  kind: "task";
-  role: "assistant";
-  task: TaskPayload;
-};
-
-type ChatMessage = TextMessage | QuizMessage | TaskMessage;
-
-function id() {
+function createId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-const quickPrompts: Record<ModuleType, string[]> = {
-  general: [
-    "Mam chaos w głowie i chcę to uporządkować",
-    "Pomóż mi podjąć decyzję",
-    "Nie wiem, od czego zacząć",
-  ],
-  relationships: [
-    "Pomóż mi zrozumieć tę relację",
-    "Czy tu są czerwone flagi?",
-    "Nie wiem czy ta osoba mnie manipuluje",
-  ],
-  emotions: [
-    "Nie ogarniam swoich emocji",
-    "Czuję napięcie i chaos",
-    "Pomóż mi nazwać, co się ze mną dzieje",
-  ],
-  quiz: [
-    "Daj mi krótki quiz o moim stanie",
-    "Zrób mi quiz o relacji",
-    "Sprawdź mnie krótkim testem",
-  ],
-  task: [
-    "Daj mi zadanie na dziś",
-    "Potrzebuję prostego planu minimum",
-    "Jaki jest mój następny krok?",
-  ],
-};
-
 export default function ChatPage() {
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const { state, setChatStyle, updateState } = useApp();
   const [activeModule, setActiveModule] = useState<ModuleType>("general");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: id(),
+      id: createId(),
       kind: "text",
       role: "assistant",
       content:
-        "Witaj. Jestem Twoim AI. Pomagam odzyskać jasność, spokój i kierunek w relacjach, emocjach i decyzjach.",
+        "Jestem Twoim przewodnikiem premium-light. Pomagam uporzadkowac emocje, relacje i kolejny krok bez medycznych obietnic i bez lania wody.",
     },
   ]);
 
-  const currentQuickPrompts = useMemo(
-    () => quickPrompts[activeModule] || quickPrompts.general,
-    [activeModule]
-  );
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function sendMessage(customText?: string) {
     const content = (customText ?? input).trim();
-    if (!content || loading) return;
 
-    setMessages((prev) => [
-      ...prev,
-      { id: id(), kind: "text", role: "user", content },
+    if (!content || loading) {
+      return;
+    }
+
+    const usingPremium = state.usage.premiumMinutes > 0;
+    const needsTestSlot = activeModule === "quiz";
+    const needsAnalysisSlot =
+      activeModule === "general" ||
+      activeModule === "relationships" ||
+      activeModule === "emotions";
+    const needsTaskSlot = activeModule === "task";
+
+    if (!usingPremium && needsTestSlot && state.usage.testsLeft <= 0) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: createId(),
+          kind: "text",
+          role: "assistant",
+          content:
+            "Dzisiejszy darmowy slot testu jest juz wykorzystany. Mozesz wrocic jutro, odpalic rewarded boost w rewardach albo wejsc do premium preview.",
+        },
+      ]);
+      return;
+    }
+
+    if (!usingPremium && needsAnalysisSlot && state.usage.analysesLeft <= 0) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: createId(),
+          kind: "text",
+          role: "assistant",
+          content:
+            "Dzisiejszy darmowy limit analiz jest juz wykorzystany. W rewardach czeka dodatkowy slot albo 30 minut premium preview.",
+        },
+      ]);
+      return;
+    }
+
+    if (!usingPremium && needsTaskSlot && state.usage.aiCredits <= 0) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: createId(),
+          kind: "text",
+          role: "assistant",
+          content:
+            "Twoj dzienny limit mikro-zadan zostal juz wykorzystany. Mozesz odblokowac kolejny ruch przez rewarded flow albo premium.",
+        },
+      ]);
+      return;
+    }
+
+    setMessages((current) => [
+      ...current,
+      {
+        id: createId(),
+        kind: "text",
+        role: "user",
+        content,
+      },
     ]);
-    if (!customText) setInput("");
+    setInput("");
     setLoading(true);
 
     try {
@@ -138,51 +238,80 @@ export default function ChatPage() {
       const data = await response.json();
 
       if (!response.ok || !data?.ok) {
-        setMessages((prev) => [
-          ...prev,
+        setMessages((current) => [
+          ...current,
           {
-            id: id(),
+            id: createId(),
             kind: "text",
             role: "assistant",
-            content: `Błąd: ${data?.error || "Nieznany błąd"}`,
+            content:
+              data?.details ||
+              data?.error ||
+              "Nie udalo sie teraz wygenerowac odpowiedzi. Sprobuj jeszcze raz za chwile.",
           },
         ]);
         return;
       }
 
+      if (!usingPremium) {
+        updateState({
+          usage: {
+            ...state.usage,
+            testsLeft:
+              state.usage.testsLeft - (needsTestSlot ? 1 : 0),
+            analysesLeft:
+              state.usage.analysesLeft - (needsAnalysisSlot ? 1 : 0),
+            aiCredits:
+              state.usage.aiCredits - (needsTaskSlot ? 1 : 0),
+          },
+        });
+      }
+
       if (data.type === "quiz" && data.quiz) {
-        setMessages((prev) => [
-          ...prev,
-          { id: id(), kind: "quiz", role: "assistant", quiz: data.quiz },
+        setMessages((current) => [
+          ...current,
+          {
+            id: createId(),
+            kind: "quiz",
+            role: "assistant",
+            quiz: data.quiz,
+          },
         ]);
         return;
       }
 
       if (data.type === "task" && data.task) {
-        setMessages((prev) => [
-          ...prev,
-          { id: id(), kind: "task", role: "assistant", task: data.task },
+        setMessages((current) => [
+          ...current,
+          {
+            id: createId(),
+            kind: "task",
+            role: "assistant",
+            task: data.task,
+          },
         ]);
         return;
       }
 
-      setMessages((prev) => [
-        ...prev,
+      setMessages((current) => [
+        ...current,
         {
-          id: id(),
+          id: createId(),
           kind: "text",
           role: "assistant",
-          content: data.reply || "Brak odpowiedzi",
+          content: data.reply || "Brak odpowiedzi.",
         },
       ]);
-    } catch (error: any) {
-      setMessages((prev) => [
-        ...prev,
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown connection error";
+      setMessages((current) => [
+        ...current,
         {
-          id: id(),
+          id: createId(),
           kind: "text",
           role: "assistant",
-          content: `Błąd połączenia: ${error?.message || "Unknown error"}`,
+          content: `Blad polaczenia: ${message}`,
         },
       ]);
     } finally {
@@ -190,122 +319,168 @@ export default function ChatPage() {
     }
   }
 
+  const activeMeta = moduleMeta[activeModule];
+
   return (
     <AppShell
-      title="Chat AI"
-      subtitle="Główne centrum rozmowy. Tu user ma jedno spójne AI i szybki dostęp do trybów."
+      title="AI Chat"
+      subtitle="Jedno spojne AI dla emocji, relacji i spokojnego planu minimum. Odpowiedzi sa krotsze lub dluzsze, ale zawsze utrzymane w premium, bezpiecznym tonie."
+      heroCode="AI"
       rightPanel={
         <div className="right-list">
-          <div className="result-box">
-            Przełącz moduły i sprawdzaj inne zachowanie AI bez opuszczania pokoju rozmowy.
+          <div className="list-panel">
+            <div className="section-headline">Styl rozmowy</div>
+            <div className="stack">
+              {styleOptions.map((style) => (
+                <button
+                  key={style.id}
+                  className={`style-chip ${
+                    state.chatStyle === style.id ? "active" : ""
+                  }`}
+                  onClick={() => setChatStyle(style.id)}
+                >
+                  <span className="style-title">{style.title}</span>
+                  <span className="style-copy">{style.copy}</span>
+                </button>
+              ))}
+            </div>
           </div>
+
+          <div className="kpi-card highlight">
+            <div className="kpi-label">Free limits</div>
+            <div className="small-note">Analizy: {state.usage.analysesLeft}</div>
+            <div className="small-note">Testy: {state.usage.testsLeft}</div>
+            <div className="small-note">Taski: {state.usage.aiCredits}</div>
+            <div className="small-note">
+              Premium preview: {state.usage.premiumMinutes} min
+            </div>
+          </div>
+
+          <SafetyNotice compact />
         </div>
       }
     >
-      <div className="stack">
-        <div className="cards-grid-4">
-          {(["general", "relationships", "emotions", "quiz", "task"] as ModuleType[]).map(
-            (mod) => (
-              <button
-                key={mod}
-                className="nav-item"
-                style={{
-                  outline:
-                    activeModule === mod
-                      ? "2px solid rgba(99,217,255,0.65)"
-                      : "none",
-                }}
-                onClick={() => setActiveModule(mod)}
-              >
-                {mod}
-              </button>
-            )
-          )}
-        </div>
-
-        <div className="cards-grid-3">
-          {currentQuickPrompts.map((prompt) => (
-            <button
-              key={prompt}
-              className="nav-item"
-              onClick={() => sendMessage(prompt)}
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-
-        <div className="glass" style={{ borderRadius: 26, padding: 16 }}>
-          <div
-            style={{
-              display: "grid",
-              gap: 14,
-              minHeight: 420,
-            }}
+      <div className="module-tabs">
+        {(Object.keys(moduleMeta) as ModuleType[]).map((moduleId) => (
+          <button
+            key={moduleId}
+            className={`module-tab ${
+              activeModule === moduleId ? "active" : ""
+            }`}
+            onClick={() => setActiveModule(moduleId)}
           >
-            {messages.map((msg) => {
-              if (msg.kind === "text") {
-                return (
-                  <div
-                    key={msg.id}
-                    style={{
-                      justifySelf: msg.role === "user" ? "end" : "start",
-                      maxWidth: "86%",
-                      padding: "14px 16px",
-                      borderRadius: 22,
-                      background:
-                        msg.role === "user"
-                          ? "linear-gradient(135deg, #77daff, #b4efff)"
-                          : "linear-gradient(180deg, rgba(255,255,255,0.97), rgba(232,247,255,0.92))",
-                      border: "1px solid rgba(255,255,255,0.92)",
-                      whiteSpace: "pre-wrap",
-                      lineHeight: 1.65,
-                    }}
-                  >
-                    <div className="kpi-label">
-                      {msg.role === "user" ? "Ty" : "AI"}
-                    </div>
-                    {msg.content}
-                  </div>
-                );
-              }
+            <span className="module-title">{moduleMeta[moduleId].title}</span>
+            <span className="module-copy">{moduleMeta[moduleId].copy}</span>
+          </button>
+        ))}
+      </div>
 
-              if (msg.kind === "quiz") {
-                return (
-                  <div key={msg.id} className="result-box">
-                    <strong>{msg.quiz.title}</strong>
-                    <div style={{ marginTop: 8 }}>{msg.quiz.intro}</div>
-                  </div>
-                );
-              }
+      <div className="quick-prompt-row">
+        {activeMeta.prompts.map((prompt) => (
+          <button
+            key={prompt}
+            className="quick-prompt-chip"
+            onClick={() => sendMessage(prompt)}
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
 
-              if (msg.kind === "task") {
-                return (
-                  <div key={msg.id} className="result-box">
-                    <strong>{msg.task.title}</strong>
-                    <div style={{ marginTop: 8 }}>{msg.task.goal}</div>
-                  </div>
-                );
-              }
-
-              return null;
-            })}
+      <div className={`chat-window chat-style-${state.chatStyle}`}>
+        <div className="chat-header">
+          <div className="kpi-card">
+            <div className="kpi-label">Biezacy modul</div>
+            <div className="kpi-value">{activeMeta.title}</div>
           </div>
+          <button
+            className="action-btn"
+            onClick={() => sendMessage(activeMeta.prompts[0])}
+            disabled={loading}
+          >
+            {loading ? "AI pracuje..." : "Szybki prompt"}
+          </button>
+        </div>
 
-          <div className="stack" style={{ marginTop: 16 }}>
-            <textarea
-              className="textarea"
-              rows={4}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Napisz, z czym mam Ci pomóc..."
-            />
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div className="small-note">Aktywny moduł: {activeModule}</div>
-              <button className="action-btn" onClick={() => sendMessage()} disabled={loading}>
-                {loading ? "AI pracuje..." : "Wyślij"}
-              </button>
+        <div className="chat-messages">
+          {messages.map((message) => {
+            if (message.kind === "text") {
+              return (
+                <div
+                  key={message.id}
+                  className={`chat-bubble ${
+                    message.role === "user"
+                      ? "chat-bubble-user"
+                      : "chat-bubble-assistant"
+                  }`}
+                >
+                  <div className="chat-label">
+                    {message.role === "user" ? "Ty" : "AI"}
+                  </div>
+                  <div>{message.content}</div>
+                </div>
+              );
+            }
+
+            if (message.kind === "quiz") {
+              return (
+                <div key={message.id} className="sheet-card chat-card">
+                  <div className="sheet-title">{message.quiz.title}</div>
+                  <div className="sheet-copy">{message.quiz.intro}</div>
+                  <div className="sheet-list">
+                    {message.quiz.questions.map((question) => (
+                      <div key={question.id} className="sheet-item">
+                        <span className="sheet-step">{question.question}</span>
+                        <div className="small-note">
+                          {question.options.join(" | ")}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={message.id} className="sheet-card chat-card">
+                <div className="sheet-title">{message.task.title}</div>
+                <div className="sheet-copy">{message.task.goal}</div>
+                <div className="sheet-list">
+                  {message.task.steps.map((step) => (
+                    <div key={step} className="sheet-item">
+                      <span className="sheet-step">{step}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="small-note">
+                  Minimum version: {message.task.minimumVersion} // reward:{" "}
+                  {message.task.reward}
+                </div>
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="composer">
+          <textarea
+            className="textarea"
+            rows={4}
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Napisz, z czym chcesz dzisiaj odzyskac jasnosc..."
+          />
+          <div className="chat-composer-footer">
+            <div className="small-note">
+              Modul: {activeMeta.title} // ton: psychoedukacja premium
             </div>
+            <button
+              className="action-btn"
+              onClick={() => sendMessage()}
+              disabled={loading}
+            >
+              {loading ? "AI pracuje..." : "Wyslij"}
+            </button>
           </div>
         </div>
       </div>

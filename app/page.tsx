@@ -1,178 +1,206 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import AppShell from "@/components/AppShell";
 import PortalCard from "@/components/PortalCard";
+import SafetyNotice from "@/components/SafetyNotice";
+import { useApp } from "@/contexts/AppContext";
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
+const coreWorlds = [
+  {
+    href: "/chat",
+    title: "AI Chat",
+    text: "Jedno spojne AI do porzadkowania emocji, relacji, przeciążenia i kolejnych krokow.",
+    icon: "AI",
+    badge: "core",
+    eyebrow: "conversation",
+  },
+  {
+    href: "/journal",
+    title: "Journal",
+    text: "Wpis dnia, nastroj, historia i lekkie trackowanie kierunku bez ciezaru terapii.",
+    icon: "JR",
+    badge: "daily",
+    eyebrow: "mood tracking",
+  },
+  {
+    href: "/quiz",
+    title: "Testy i quizy",
+    text: "Szybkie testy stanu, relacji, granic i przeciazenia z wynikiem oraz CTA.",
+    icon: "QZ",
+    badge: "insight",
+    eyebrow: "diagnostics",
+  },
+  {
+    href: "/tasks",
+    title: "Sciezki i taski",
+    text: "Task dnia, plan minimum, wyzwanie 7 dni i mikro-questy pod spokoj.",
+    icon: "TS",
+    badge: "action",
+    eyebrow: "quests",
+  },
+];
+
+const supportWorlds = [
+  {
+    href: "/rewards",
+    title: "Rewardy i economy",
+    text: "Krysztaly, dobra energia, daily chest, streak i rewarded flow, ktory napedza powroty.",
+    icon: "RW",
+    badge: "loop",
+    eyebrow: "retention",
+  },
+  {
+    href: "/games",
+    title: "Mini-gry",
+    text: "Snake, Memory, Clicker i Rozbij chaos daja lekki gaming-social rytm bez przebodzcowania.",
+    icon: "GM",
+    badge: "arcade",
+    eyebrow: "play",
+  },
+  {
+    href: "/premium",
+    title: "Premium",
+    text: "Wyrazne rozroznienie free i premium, roadmapa wartosci oraz miejsce na checkout flow.",
+    icon: "PR",
+    badge: "monetization",
+    eyebrow: "plans",
+  },
+  {
+    href: "/profile",
+    title: "Profil",
+    text: "Osobisty hub z postepem, stylem, tagami i tozsamoscia, do ktorej chce sie wracac.",
+    icon: "PF",
+    badge: "identity",
+    eyebrow: "social layer",
+  },
+];
 
 export default function HomePage() {
+  const { state, derived } = useApp();
+
   return (
     <AppShell
-      title="Wejdź do świata AI"
-      subtitle="To już nie jest jedna długa strona. To portal z osobnymi przestrzeniami: AI, rewardy, tarot, numerologia i gry."
+      title={state.theme.heroTitle}
+      subtitle="Premium portal psychoedukacyjny laczy AI, journal, quizy, mikro-zadania, rewardy i mini-gry w jedno spokojne, nowoczesne doswiadczenie, do ktorego chce sie wracac codziennie."
+      heroCode="AI"
       rightPanel={
         <div className="right-list">
-          <div className="kpi-card">
-            <div className="kpi-label">Stan</div>
-            <div className="kpi-value">Ready</div>
+          <div className="kpi-card highlight">
+            <div className="kpi-label">Dzisiaj masz</div>
+            <div className="kpi-value">
+              {state.usage.aiCredits + state.usage.analysesLeft} slotow
+            </div>
+            <div className="small-note">
+              Free loop: {state.usage.testsLeft} test, {state.usage.analysesLeft} analizy i
+              {state.usage.premiumMinutes > 0
+                ? ` ${state.usage.premiumMinutes} min premium`
+                : " miejsce na rewarded boosty."}
+            </div>
           </div>
-          <div className="result-box">
-            Każda zakładka prowadzi teraz do osobnej podstrony jak w porządnym
-            portalu.
+
+          <div className="list-panel">
+            <div className="section-headline">Dlaczego to wciaga</div>
+            <div className="timeline">
+              <div className="timeline-item">
+                <div className="timeline-dot" style={{ background: "#67d8ff" }} />
+                <div>
+                  <div className="timeline-title">Natychmiastowa ulga</div>
+                  <div className="timeline-copy">
+                    Uzytkownik od razu znajduje modul, ktory odpowiada na jego stan.
+                  </div>
+                </div>
+              </div>
+              <div className="timeline-item">
+                <div className="timeline-dot" style={{ background: "#ffba6b" }} />
+                <div>
+                  <div className="timeline-title">Czytelny progres</div>
+                  <div className="timeline-copy">
+                    Rewardy, questy i poziomy wzmacniaja poczucie ruchu, nie obciazenia.
+                  </div>
+                </div>
+              </div>
+              <div className="timeline-item">
+                <div className="timeline-dot" style={{ background: "#7cf0c2" }} />
+                <div>
+                  <div className="timeline-title">Bezpieczny ton</div>
+                  <div className="timeline-copy">
+                    To wsparcie psychoedukacyjne z jasnym wordingiem i bez obietnic medycznych.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          <SafetyNotice compact />
         </div>
       }
     >
-      <motion.div
-        className="cards-grid-4"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          visible: {
-            transition: {
-              staggerChildren: 0.1,
-            },
-          },
-        }}
-      >
-        <motion.div variants={cardVariants}>
-          <Link href="/chat">
-            <PortalCard
-              title="Chat AI"
-              text="Jedno centrum rozmowy i ukryta logika wieloagentowa."
-              icon="💬"
-            />
+      <div className="cards-grid-4">
+        {coreWorlds.map((world) => (
+          <Link key={world.href} href={world.href}>
+            <PortalCard {...world} />
           </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/rewards">
-            <PortalCard
-              title="Rewardy"
-              text="Daily reward, streak, diamenty, bonusy i skrzynki."
-              icon="🎁"
-            />
-          </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/games">
-            <PortalCard
-              title="Gry"
-              text="Przestrzeń pod mini-gry, aktywności i portale interakcji."
-              icon="🎮"
-            />
-          </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/games/snake">
-            <PortalCard
-              title="Snake"
-              text="Prawdziwa mini-gra z planszą, sterowaniem i wynikiem."
-              icon="🐍"
-            />
-          </Link>
-        </motion.div>
-      </motion.div>
+        ))}
+      </div>
 
-      <motion.div
-        className="cards-grid-3"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          visible: {
-            transition: {
-              staggerChildren: 0.1,
-              delay: 0.4,
-            },
-          },
-        }}
-      >
-        <motion.div variants={cardVariants}>
-          <Link href="/relationships">
-            <PortalCard title="Relacje" text="Analiza sygnałów, granic i dynamiki." />
-          </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/emotions">
-            <PortalCard title="Emocje" text="Regulacja, napięcie, chaos i jasność." />
-          </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/quiz">
-            <PortalCard title="Quiz" text="Interaktywne testy i pytania prowadzące." />
-          </Link>
-        </motion.div>
-      </motion.div>
+      <div className="split-grid">
+        <div className="list-panel">
+          <div className="section-headline">Live app loop</div>
+          <div className="metric-row">
+            <div className="metric-chip">
+              <span>Level</span>
+              <strong>{derived.level}</strong>
+            </div>
+            <div className="metric-chip">
+              <span>Streak</span>
+              <strong>{state.streak} dni</strong>
+            </div>
+            <div className="metric-chip">
+              <span>Journal</span>
+              <strong>{state.journalEntries.length} wpisow</strong>
+            </div>
+            <div className="metric-chip">
+              <span>Pulse</span>
+              <strong>{state.socialPulse}%</strong>
+            </div>
+          </div>
 
-      <motion.div
-        className="cards-grid-4"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          visible: {
-            transition: {
-              staggerChildren: 0.1,
-              delay: 0.6,
-            },
-          },
-        }}
-      >
-        <motion.div variants={cardVariants}>
-          <Link href="/tasks">
-            <PortalCard title="Zadania" text="Challenge, plan minimum i mikro-kroki." />
-          </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/tarot">
-            <PortalCard title="Tarot" text="Karta dnia i rozkłady 3 kart." />
-          </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/horoscope">
-            <PortalCard title="Horoskop" text="Dzienna energia dla znaku." />
-          </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/numerology">
-            <PortalCard title="Numerologia" text="Droga życia i opis energii." />
-          </Link>
-        </motion.div>
-      </motion.div>
+          <div className="result-box">
+            <strong>Brand promise</strong>
+            <p>
+              Brand 1 laczy emocje, relacje, spokoj i rozwoj w formule premium.
+              Cieplo, nowoczesnie i bez chaosu, z UX-em bardziej przypominajacym
+              najlepsze portale produktowe niz klasyczny self-help landing.
+            </p>
+          </div>
+        </div>
 
-      <motion.div
-        className="cards-grid-2"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          visible: {
-            transition: {
-              staggerChildren: 0.1,
-              delay: 0.8,
-            },
-          },
-        }}
-      >
-        <motion.div variants={cardVariants}>
-          <Link href="/profile">
-            <PortalCard
-              title="Profil"
-              text="Profil użytkownika edytowany komendą, bardziej jak personal hub."
-            />
+        <div className="list-panel">
+          <div className="section-headline">Feed aktywnosci</div>
+          <div className="timeline">
+            {state.rewardHistory.map((entry) => (
+              <div key={entry.id} className="timeline-item">
+                <div className="timeline-dot" style={{ background: entry.accent }} />
+                <div>
+                  <div className="timeline-title">{entry.title}</div>
+                  <div className="timeline-copy">{entry.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="cards-grid-4">
+        {supportWorlds.map((world) => (
+          <Link key={world.href} href={world.href}>
+            <PortalCard {...world} />
           </Link>
-        </motion.div>
-        <motion.div variants={cardVariants}>
-          <Link href="/admin">
-            <PortalCard
-              title="Admin AI Studio"
-              text="Panel do sterowania zmianami strony i live preview."
-            />
-          </Link>
-        </motion.div>
-      </motion.div>
+        ))}
+      </div>
+
+      <SafetyNotice />
     </AppShell>
   );
 }

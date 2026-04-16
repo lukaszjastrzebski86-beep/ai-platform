@@ -2,27 +2,43 @@
 
 import { motion } from "framer-motion";
 
-export default function FloatingBackground() {
-  const orbs = Array.from({ length: 8 }, (_, i) => i);
+type FloatingBackgroundProps = {
+  tone?: string;
+};
 
+const particles = [
+  { left: "6%", top: "14%", size: 180, delay: 0, duration: 18 },
+  { left: "22%", top: "58%", size: 120, delay: 1.2, duration: 14 },
+  { left: "40%", top: "8%", size: 220, delay: 0.4, duration: 20 },
+  { left: "56%", top: "44%", size: 130, delay: 1.8, duration: 16 },
+  { left: "74%", top: "18%", size: 190, delay: 0.8, duration: 19 },
+  { left: "84%", top: "68%", size: 150, delay: 0.2, duration: 17 },
+];
+
+export default function FloatingBackground({
+  tone = "home",
+}: FloatingBackgroundProps) {
   return (
-    <div className="floating-background">
-      {orbs.map((orb) => (
+    <div className={`floating-background tone-${tone}`}>
+      {particles.map((particle, index) => (
         <motion.div
-          key={orb}
+          key={`${tone}-${index}`}
           className="floating-orb"
           style={{
-            left: `${10 + orb * 10}%`,
-            top: `${20 + (orb % 3) * 20}%`,
-            animationDelay: `${orb * 0.5}s`,
+            left: particle.left,
+            top: particle.top,
+            width: particle.size,
+            height: particle.size,
           }}
           animate={{
-            y: [0, -20, 0],
-            x: [0, 10, 0],
-            scale: [1, 1.1, 1],
+            x: [0, 18, -12, 0],
+            y: [0, -18, 14, 0],
+            scale: [1, 1.08, 0.96, 1],
+            opacity: [0.32, 0.54, 0.28, 0.32],
           }}
           transition={{
-            duration: 4 + orb * 0.5,
+            duration: particle.duration,
+            delay: particle.delay,
             repeat: Infinity,
             ease: "easeInOut",
           }}

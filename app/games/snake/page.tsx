@@ -1,18 +1,14 @@
 import AppShell from "@/components/AppShell";
+import SafetyNotice from "@/components/SafetyNotice";
 import SnakeGame from "@/components/SnakeGame";
 
 export default function SnakePage() {
   return (
     <AppShell
-      title="Snake"
-      subtitle="Tu jest już prawdziwa mini-gra, nie tylko napis. To osobna podstrona jak w porządnym portalu."
-      rightPanel={
-        <div className="right-list">
-          <div className="result-box">
-            Następny krok po wdrożeniu: dopisać reward system i zapis najlepszego wyniku.
-          </div>
-        </div>
-      }
+      title="Snake // zbieraj swiatlo"
+      subtitle="Reskin klasycznego Snake'a jest tutaj czescia petli codziennego resetu. Szybka sesja daje rewardy i czucie progresu bez przebodzcowania."
+      heroCode="SN"
+      rightPanel={<SafetyNotice compact />}
     >
       <SnakeGame />
     </AppShell>

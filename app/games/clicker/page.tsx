@@ -1,18 +1,14 @@
 import AppShell from "@/components/AppShell";
+import SafetyNotice from "@/components/SafetyNotice";
 import ClickerGame from "@/components/ClickerGame";
 
 export default function ClickerPage() {
   return (
     <AppShell
-      title="Clicker Game"
-      subtitle="Zbieraj światło klikając. Upgrade'uj mnożnik i zwiększaj efektywność."
-      rightPanel={
-        <div className="right-list">
-          <div className="result-box">
-            Prosta mechanika grywalizacji. Każdy klik dodaje światło do globalnego stanu.
-          </div>
-        </div>
-      }
+      title="Laduj energie"
+      subtitle="Clicker jest najprostsza petla wzmacniania sprawczosci. Kilka klikniec, wyrazny feedback i szybki zastrzyk wspolnych rewardow."
+      heroCode="CK"
+      rightPanel={<SafetyNotice compact />}
     >
       <ClickerGame />
     </AppShell>

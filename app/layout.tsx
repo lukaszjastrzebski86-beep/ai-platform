@@ -1,12 +1,11 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { AppProvider } from "@/contexts/AppContext";
-import { AnimatePresence } from "framer-motion";
 
 export const metadata: Metadata = {
-  title: "Heavenly AI Portal",
+  title: "Pulse Rift Portal",
   description:
-    "AI portal for relationships, emotions, quizzes, rewards and games",
+    "Premium gaming-social AI portal with chat, rewards, profiles, admin studio and arcade loops.",
 };
 
 export default function RootLayout({
@@ -17,11 +16,7 @@ export default function RootLayout({
   return (
     <html lang="pl">
       <body>
-        <AnimatePresence mode="wait">
-          <AppProvider>
-            {children}
-          </AppProvider>
-        </AnimatePresence>
+        <AppProvider>{children}</AppProvider>
       </body>
     </html>
   );

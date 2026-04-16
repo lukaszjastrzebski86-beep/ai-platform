@@ -1,60 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AppShell from "@/components/AppShell";
+import SafetyNotice from "@/components/SafetyNotice";
+import { useApp, type AppState } from "@/contexts/AppContext";
 
-type SiteConfig = {
-  themeName: string;
-  heroTitle: string;
-  heroSubtitle: string;
-  notice: string;
-  accentFrom: string;
-  accentTo: string;
-  badgeText: string;
-};
+type ThemePreview = Partial<AppState["theme"]>;
 
-const defaultSiteConfig: SiteConfig = {
-  themeName: "Heaven",
-  heroTitle: "Jedno AI.\nWięcej światła,\nmniej chaosu.",
-  heroSubtitle:
-    "Portal AI z osobnymi podstronami, grami i systemem zmian na żywo.",
-  notice:
-    "Panel admina działa jako live preview i lokalny zapis w przeglądarce.",
-  accentFrom: "#6be0ff",
-  accentTo: "#a4f1ff",
-  badgeText: "Heavenly AI Engine • LIVE",
-};
+const adminPrompts = [
+  "Nadaj stronie bardziej cieply, premium i spokojny klimat z akcentem zlotego swiatla.",
+  "Przesun brand bardziej w strone nowoczesnej psychoedukacji premium z czytelnym CTA.",
+  "Ustaw bardziej social, lifestylowy ton i mocniejszy onboarding vibe.",
+];
 
 export default function AdminPage() {
-  const [siteConfig, setSiteConfig] = useState<SiteConfig>(defaultSiteConfig);
+  const { state, updateTheme } = useApp();
   const [adminPrompt, setAdminPrompt] = useState("");
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [pendingSiteConfig, setPendingSiteConfig] =
-    useState<Partial<SiteConfig> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [pendingTheme, setPendingTheme] = useState<ThemePreview | null>(null);
   const [adminExplanation, setAdminExplanation] = useState("");
-  const [previewAdminChanges, setPreviewAdminChanges] = useState(false);
 
-  useEffect(() => {
-    try {
-      const savedSite = localStorage.getItem("heaven-site-config");
-      if (savedSite) setSiteConfig(JSON.parse(savedSite));
-    } catch {}
-  }, []);
+  const previewTheme = pendingTheme ? { ...state.theme, ...pendingTheme } : state.theme;
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("heaven-site-config", JSON.stringify(siteConfig));
-    } catch {}
-  }, [siteConfig]);
+  async function runAdminPreview(promptText?: string) {
+    const prompt = (promptText ?? adminPrompt).trim();
 
-  const effectiveSiteConfig =
-    previewAdminChanges && pendingSiteConfig
-      ? { ...siteConfig, ...pendingSiteConfig }
-      : siteConfig;
+    if (!prompt) {
+      return;
+    }
 
-  async function runAdminPreview() {
-    if (!adminPrompt.trim()) return;
-    setAdminLoading(true);
+    setLoading(true);
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -63,120 +39,125 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           action: "admin",
-          prompt: adminPrompt,
+          prompt,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data?.ok) {
-        alert(data?.details || data?.error || "Błąd panelu admina.");
+        setAdminExplanation(
+          data?.details || data?.error || "Nie udalo sie przygotowac podgladu motywu."
+        );
         return;
       }
 
-      setPendingSiteConfig(data.preview || null);
+      setPendingTheme(data.preview || null);
       setAdminExplanation(data.explanation || "");
-      setPreviewAdminChanges(true);
-    } catch (error: any) {
-      alert(error?.message || "Błąd połączenia.");
+      setAdminPrompt(prompt);
+    } catch (error) {
+      setAdminExplanation(
+        error instanceof Error
+          ? error.message
+          : "Blad polaczenia przy tworzeniu podgladu."
+      );
     } finally {
-      setAdminLoading(false);
+      setLoading(false);
     }
   }
 
-  function acceptAdminPreview() {
-    if (!pendingSiteConfig) return;
-    setSiteConfig((prev) => ({
-      ...prev,
-      ...pendingSiteConfig,
-    }));
-    setPendingSiteConfig(null);
-    setAdminExplanation("");
-    setPreviewAdminChanges(false);
-  }
+  function acceptTheme() {
+    if (!pendingTheme) {
+      return;
+    }
 
-  function discardAdminPreview() {
-    setPendingSiteConfig(null);
-    setAdminExplanation("");
-    setPreviewAdminChanges(false);
+    updateTheme(pendingTheme);
+    setPendingTheme(null);
+    setAdminExplanation("Motyw zostal zapisany i jest juz aktywny globalnie.");
   }
 
   return (
     <AppShell
-      title="Admin AI Studio"
-      subtitle="Tu wpisujesz polecenia zmian strony. AI robi podgląd, a Ty akceptujesz albo odrzucasz."
+      title="Admin Studio"
+      subtitle="Panel sterowania nie ma byc technicznym kombajnem. To miejsce, w ktorym edytujesz brand, hero copy i ton calego produktu w sposob zrozumialy dla contentu i growthu."
+      heroCode="AD"
+      rightPanel={<SafetyNotice compact />}
     >
-      <div className="cards-grid-2">
-        <div className="portal-card glass">
-          <div className="portal-card-title">Polecenie dla AI</div>
-          <div className="portal-card-text">
-            Np. „Zmień tytuł na Świątynia Światła, daj bardziej złoty klimat,
-            badge Aurora Release i krótszy komunikat górny.”
-          </div>
-
-          <div className="stack" style={{ marginTop: 14 }}>
-            <textarea
-              className="textarea"
-              rows={6}
-              value={adminPrompt}
-              onChange={(e) => setAdminPrompt(e.target.value)}
-              placeholder="Napisz polecenie zmiany strony..."
-            />
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button
-                className="action-btn"
-                onClick={runAdminPreview}
-                disabled={adminLoading}
-              >
-                {adminLoading ? "AI tworzy podgląd..." : "Stwórz podgląd"}
+      <div className="daily-grid">
+        <div className="editor-shell">
+          <div className="section-headline">Prompt do edycji strony</div>
+          <textarea
+            className="textarea"
+            rows={6}
+            value={adminPrompt}
+            onChange={(event) => setAdminPrompt(event.target.value)}
+            placeholder="Opisz nowy klimat strony, hero, badge, notice albo akcenty."
+          />
+          <div className="button-row">
+            <button
+              className="action-btn"
+              onClick={() => runAdminPreview()}
+              disabled={loading}
+            >
+              {loading ? "Tworzenie..." : "Stworz podglad"}
+            </button>
+            {pendingTheme ? (
+              <button className="action-btn secondary" onClick={acceptTheme}>
+                Zapisz motyw
               </button>
-
-              {pendingSiteConfig && (
-                <>
-                  <button className="action-btn secondary" onClick={acceptAdminPreview}>
-                    Akceptuję zmiany
-                  </button>
-                  <button className="action-btn secondary" onClick={discardAdminPreview}>
-                    Odrzuć
-                  </button>
-                </>
-              )}
-            </div>
-
-            {adminExplanation && <div className="result-box">{adminExplanation}</div>}
+            ) : null}
           </div>
+          {adminExplanation ? <div className="result-box">{adminExplanation}</div> : null}
         </div>
 
-        <div className="portal-card glass">
-          <div className="portal-card-title">Podgląd aktualnego motywu</div>
-
+        <div className="admin-preview">
+          <div className="section-headline">Live preview</div>
           <div
             className="result-box"
             style={{
-              background: `linear-gradient(135deg, ${effectiveSiteConfig.accentFrom}22, ${effectiveSiteConfig.accentTo}22)`,
+              background: `linear-gradient(135deg, ${previewTheme.accentFrom}22, ${previewTheme.accentTo}22)`,
             }}
           >
-            <strong>Theme:</strong> {effectiveSiteConfig.themeName}
-            <div style={{ marginTop: 10 }}>
-              <strong>Badge:</strong> {effectiveSiteConfig.badgeText}
-            </div>
-            <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>
-              <strong>Hero:</strong> {effectiveSiteConfig.heroTitle}
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <strong>Subtitle:</strong> {effectiveSiteConfig.heroSubtitle}
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <strong>Notice:</strong> {effectiveSiteConfig.notice}
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <strong>Accent from:</strong> {effectiveSiteConfig.accentFrom}
-            </div>
-            <div style={{ marginTop: 6 }}>
-              <strong>Accent to:</strong> {effectiveSiteConfig.accentTo}
+            <strong>{previewTheme.themeName}</strong>
+            <p style={{ whiteSpace: "pre-wrap" }}>{previewTheme.heroTitle}</p>
+            <p>{previewTheme.heroSubtitle}</p>
+            <div className="small-note">{previewTheme.notice}</div>
+            <div className="status-pill" style={{ marginTop: 14 }}>
+              {previewTheme.badgeText}
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="cards-grid-3">
+        {adminPrompts.map((prompt) => (
+          <button
+            key={prompt}
+            className="reward-item"
+            onClick={() => runAdminPreview(prompt)}
+          >
+            <span className="reward-title">Growth preset</span>
+            <span className="reward-copy">{prompt}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="cards-grid-4">
+        <div className="profile-panel">
+          <div className="section-headline">Home</div>
+          <div className="reward-copy">Hero, live loop i feed aktywnosci.</div>
+        </div>
+        <div className="profile-panel">
+          <div className="section-headline">Chat</div>
+          <div className="reward-copy">AI premium-light, limity free i style rozmowy.</div>
+        </div>
+        <div className="profile-panel">
+          <div className="section-headline">Rewards</div>
+          <div className="reward-copy">Daily chest, rewarded flow, economy i powroty.</div>
+        </div>
+        <div className="profile-panel">
+          <div className="section-headline">Legal</div>
+          <div className="reward-copy">Bezpieczny wording, psychoedukacja i czytelne granice obietnicy.</div>
         </div>
       </div>
     </AppShell>

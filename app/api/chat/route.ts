@@ -7,16 +7,14 @@ type ModuleType =
   | "quiz"
   | "task";
 
-type QuizQuestion = {
-  id: string;
-  question: string;
-  options: string[];
-};
-
 type QuizPayload = {
   title: string;
   intro: string;
-  questions: QuizQuestion[];
+  questions: Array<{
+    id: string;
+    question: string;
+    options: string[];
+  }>;
   resultGuide: {
     mostlyA: string;
     mostlyB: string;
@@ -33,6 +31,30 @@ type TaskPayload = {
   reward: string;
 };
 
+type ProfilePreview = {
+  displayName?: string;
+  title?: string;
+  aura?: string;
+  accent?: string;
+  avatar?: string;
+  badge?: string;
+  bio?: string;
+  clan?: string;
+  statusLine?: string;
+  tags?: string[];
+};
+
+type ThemePreview = {
+  themeName?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  notice?: string;
+  accentFrom?: string;
+  accentTo?: string;
+  badgeText?: string;
+  seasonLabel?: string;
+};
+
 function normalizeModule(value: unknown): ModuleType {
   if (
     value === "general" ||
@@ -43,205 +65,148 @@ function normalizeModule(value: unknown): ModuleType {
   ) {
     return value;
   }
+
   return "general";
 }
 
 function inferTopic(text: string) {
-  const t = text.toLowerCase();
+  const value = text.toLowerCase();
 
   if (
-    t.includes("relac") ||
-    t.includes("ona") ||
-    t.includes("on") ||
-    t.includes("partner") ||
-    t.includes("dziewczyn") ||
-    t.includes("chłopak") ||
-    t.includes("manipul")
+    value.includes("relac") ||
+    value.includes("granic") ||
+    value.includes("partner") ||
+    value.includes("ona") ||
+    value.includes("on")
   ) {
     return "relacje";
   }
 
   if (
-    t.includes("emoc") ||
-    t.includes("chaos") ||
-    t.includes("stres") ||
-    t.includes("lęk") ||
-    t.includes("napię") ||
-    t.includes("smutek")
+    value.includes("emoc") ||
+    value.includes("chaos") ||
+    value.includes("napi") ||
+    value.includes("stres") ||
+    value.includes("lęk") ||
+    value.includes("lek")
   ) {
     return "emocje";
   }
 
   if (
-    t.includes("praca") ||
-    t.includes("firma") ||
-    t.includes("biznes") ||
-    t.includes("projekt")
+    value.includes("przeciaz") ||
+    value.includes("zmecz") ||
+    value.includes("za duzo")
   ) {
-    return "praca";
+    return "przeciazenie";
   }
 
-  if (
-    t.includes("zdrow") ||
-    t.includes("sen") ||
-    t.includes("energia") ||
-    t.includes("regener")
-  ) {
-    return "zdrowie";
-  }
-
-  return "ogólny";
+  return "ogolny";
 }
 
 function buildQuiz(topic: string): QuizPayload {
   if (topic === "relacje") {
     return {
-      title: "Quiz: stan Twojej relacji",
+      title: "Quiz premium-light // relacja",
       intro:
-        "Odpowiedz szybko i intuicyjnie. Na końcu zobaczysz prosty odczyt sytuacji.",
+        "Odpowiedz szybko i intuicyjnie. To psychoedukacyjne spojrzenie na sygnaly, nie diagnoza.",
       questions: [
         {
           id: "q1",
-          question: "Jak czujesz się najczęściej po kontakcie z tą osobą?",
+          question: "Po kontakcie z ta osoba czujesz glownie:",
           options: [
-            "A) Spokojniej i pewniej",
-            "B) Różnie, zależy od sytuacji",
-            "C) Ciężej, bardziej napięty lub winny",
+            "A) Ulge lub spokoj",
+            "B) Mieszane sygnaly",
+            "C) Napiecie albo wine",
           ],
         },
         {
           id: "q2",
-          question: "Czy możesz otwarcie mówić o swoich granicach?",
+          question: "Gdy mowisz o granicach, druga strona:",
           options: [
-            "A) Tak, zazwyczaj są szanowane",
-            "B) Czasem tak, czasem nie",
-            "C) Raczej nie, bo kończy się napięciem lub presją",
+            "A) Slucha i respektuje",
+            "B) Reaguje roznie",
+            "C) Naciska lub bagatelizuje",
           ],
         },
         {
           id: "q3",
-          question: "Jak ta osoba reaguje, gdy się z nią nie zgadzasz?",
-          options: [
-            "A) Rozmawia i słucha",
-            "B) Bywa różnie",
-            "C) Atakuje, odwraca kota ogonem albo wzbudza winę",
-          ],
-        },
-        {
-          id: "q4",
-          question: "Czy po tej relacji masz więcej energii czy mniej?",
-          options: [
-            "A) Więcej energii i poczucia bezpieczeństwa",
-            "B) Neutralnie albo nierówno",
-            "C) Wyraźnie mniej energii",
-          ],
-        },
-        {
-          id: "q5",
-          question: "Na ile czujesz, że możesz być sobą?",
-          options: [
-            "A) W dużym stopniu",
-            "B) Tylko częściowo",
-            "C) Często się pilnuję albo tłumię",
-          ],
+          question: "Na ile mozesz byc soba bez nadmiernego dopasowania?",
+          options: ["A) W duzym stopniu", "B) Czescowo", "C) Raczej nie"],
         },
       ],
       resultGuide: {
         mostlyA:
-          "Przewaga A: relacja wygląda raczej stabilnie, ale nadal warto obserwować konkretne sygnały i komunikację.",
+          "Przewaga A: relacja daje wiecej spokoju, ale nadal warto obserwowac fakty i komunikacje.",
         mostlyB:
-          "Przewaga B: relacja jest mieszana. Potrzeba doprecyzowania granic, komunikacji i powtarzających się wzorców.",
+          "Przewaga B: sytuacja jest mieszana. Najbardziej przyda sie doprecyzowanie granic.",
         mostlyC:
-          "Przewaga C: są mocne sygnały przeciążenia lub niezdrowej dynamiki. Warto przyjrzeć się granicom, bezpieczeństwu i powtarzającym się zachowaniom.",
+          "Przewaga C: widac sygnaly mocnego tarcia. Wroc do faktow, bezpieczenstwa i prostych granic.",
       },
     };
   }
 
-  if (topic === "emocje") {
+  if (topic === "emocje" || topic === "przeciazenie") {
     return {
-      title: "Quiz: Twój stan emocjonalny",
+      title: "Quiz premium-light // stan emocjonalny",
       intro:
-        "Krótka diagnostyka tego, czy jesteś bardziej w przeciążeniu, rozchwianiu czy w równowadze.",
+        "Ten quiz pomaga zobaczyc, czy jestes blizej rownowagi, wahania czy przeciazenia.",
       questions: [
         {
           id: "q1",
-          question: "Jak często ostatnio czujesz napięcie w ciele lub głowie?",
-          options: ["A) Rzadko", "B) Czasem", "C) Bardzo często"],
+          question: "Jak wyglada dzisiaj napiecie w ciele?",
+          options: ["A) Niskie", "B) Falujace", "C) Wysokie"],
         },
         {
           id: "q2",
-          question: "Jak wygląda Twoja energia w ostatnich dniach?",
-          options: ["A) Dość stabilna", "B) Falująca", "C) Niska lub poszarpana"],
+          question: "Jak szybko wracasz do spokoju po trudnym momencie?",
+          options: ["A) Dosyc szybko", "B) Potrzebuje chwili", "C) Bardzo trudno"],
         },
         {
           id: "q3",
-          question: "Jak oceniasz swoją koncentrację?",
-          options: ["A) Jest okej", "B) Bywa różnie", "C) Rozsypuje się często"],
-        },
-        {
-          id: "q4",
-          question: "Jak szybko wracasz do równowagi po trudniejszym momencie?",
-          options: [
-            "A) Dość szybko",
-            "B) Potrzebuję trochę czasu",
-            "C) Bardzo trudno mi wrócić",
-          ],
-        },
-        {
-          id: "q5",
-          question: "Czy umiesz nazwać, co dokładnie czujesz?",
-          options: ["A) Zazwyczaj tak", "B) Czasami", "C) Raczej mam chaos"],
+          question: "Czy wiesz, czego najbardziej potrzebujesz dzisiaj?",
+          options: ["A) Tak", "B) Tylko troche", "C) Raczej nie"],
         },
       ],
       resultGuide: {
         mostlyA:
-          "Przewaga A: jesteś raczej blisko równowagi. Warto tylko pilnować regeneracji i rytmu.",
+          "Przewaga A: jestes blisko rownowagi. Warto chronic rytm i nie dokladac sobie presji.",
         mostlyB:
-          "Przewaga B: jesteś w stanie mieszanym. Potrzebujesz porządku, lepszego rytmu i kilku prostych nawyków stabilizujących.",
+          "Przewaga B: to stan mieszany. Pomoga Ci prosty journal i jedno zadanie minimum.",
         mostlyC:
-          "Przewaga C: masz sygnały przeciążenia albo chaosu emocjonalnego. Warto zejść do prostych kroków, regulacji i odciążenia.",
+          "Przewaga C: widac sygnaly przeciazenia. Zaczynaj od oddechu, nazwania stanu i mikrokroku.",
       },
     };
   }
 
   return {
-    title: "Quiz: Twój aktualny stan",
+    title: "Quiz premium-light // check-in",
     intro:
-      "Krótki test, który pomoże sprawdzić, w jakim miejscu jesteś i co warto zrobić dalej.",
+      "Krotki test psychoedukacyjny do uporzadkowania stanu i kolejnego ruchu.",
     questions: [
       {
         id: "q1",
-        question: "Jak bardzo masz dziś poczucie jasności?",
-        options: ["A) Duże", "B) Średnie", "C) Małe"],
+        question: "Ile masz dzisiaj jasnosci?",
+        options: ["A) Duzo", "B) Troche", "C) Malo"],
       },
       {
         id: "q2",
-        question: "Jak oceniasz dziś swoją energię?",
-        options: ["A) Dobra", "B) Nierówna", "C) Niska"],
+        question: "Jak oceniasz swoja energie?",
+        options: ["A) Stabilna", "B) Nierowna", "C) Niska"],
       },
       {
         id: "q3",
-        question: "Czy wiesz, jaki jest Twój następny krok?",
-        options: ["A) Tak", "B) Mniej więcej", "C) Nie"],
-      },
-      {
-        id: "q4",
-        question: "Jak wygląda Twój poziom napięcia?",
-        options: ["A) Niski", "B) Średni", "C) Wysoki"],
-      },
-      {
-        id: "q5",
-        question: "Czy masz dziś przestrzeń na działanie?",
-        options: ["A) Tak", "B) Trochę", "C) Prawie wcale"],
+        question: "Czy widzisz jeden kolejny krok?",
+        options: ["A) Tak", "B) Zarys", "C) Jeszcze nie"],
       },
     ],
     resultGuide: {
       mostlyA:
-        "Przewaga A: jesteś dość blisko działania. Najlepszy moment, by przejść do konkretnego celu.",
+        "Przewaga A: mozesz isc w konkret. Najlepiej wykorzystac ten moment na zamkniecie jednej rzeczy.",
       mostlyB:
-        "Przewaga B: potrzebujesz doprecyzowania i prostszego planu.",
+        "Przewaga B: potrzebujesz doprecyzowania. Journal i plan minimum beda teraz najcenniejsze.",
       mostlyC:
-        "Przewaga C: najpierw porządek i odciążenie, dopiero potem większe decyzje.",
+        "Przewaga C: najpierw spokoj i odciazenie, dopiero potem wieksze decyzje.",
     },
   };
 }
@@ -249,233 +214,257 @@ function buildQuiz(topic: string): QuizPayload {
 function buildTask(topic: string): TaskPayload {
   if (topic === "relacje") {
     return {
-      title: "Zadanie: mapa sygnałów w relacji",
-      goal: "Zobaczyć fakty zamiast chaosu i domysłów.",
-      duration: "10–15 minut",
-      steps: [
-        "Wypisz 3 konkretne sytuacje, które wzbudziły Twój niepokój.",
-        "Przy każdej dopisz: co padło, co zrobiła druga osoba, co poczułeś.",
-        "Zaznacz, czy to był jednorazowy incydent czy powtarzający się wzorzec.",
-      ],
-      minimumVersion:
-        "Zapisz choć jedną sytuację i nazwij jedno zachowanie, które było dla Ciebie nie okej.",
-      reward: "Większa jasność i mniej emocjonalnego chaosu.",
-    };
-  }
-
-  if (topic === "emocje") {
-    return {
-      title: "Zadanie: 3-minutowy reset emocji",
-      goal: "Zejść z chaosu do większej jasności i regulacji.",
-      duration: "3–5 minut",
-      steps: [
-        "Nazwij jednym słowem główną emocję, którą teraz czujesz.",
-        "Zrób 10 spokojnych oddechów: dłuższy wydech niż wdech.",
-        "Napisz jedno zdanie: czego teraz najbardziej potrzebuję?",
-      ],
-      minimumVersion:
-        "Tylko nazwij emocję i zrób 5 spokojnych oddechów.",
-      reward: "Szybszy powrót do równowagi i poczucie wpływu.",
-    };
-  }
-
-  if (topic === "praca") {
-    return {
-      title: "Zadanie: plan minimum na dziś",
-      goal: "Ruszyć z miejsca bez przeciążania się.",
+      title: "Task dnia // mapa sygnalow",
+      goal: "Zobaczyc relacje bardziej przez fakty niz przez chaos i domysly.",
       duration: "10 minut",
       steps: [
-        "Wybierz jedną najważniejszą rzecz na dziś.",
-        "Podziel ją na pierwszy mały ruch do zrobienia w 10 minut.",
-        "Ustaw konkretną godzinę startu i zrób tylko ten pierwszy krok.",
+        "Wypisz dwie sytuacje, po ktorych zostalo w Tobie napiecie.",
+        "Dopisuj tylko fakty: co padlo, co sie wydarzylo, co poczules.",
+        "Nazwij jedna granice, ktora w tej relacji jest dla Ciebie wazna.",
       ],
       minimumVersion:
-        "Nazwij jedną rzecz i zrób pierwszy 5-minutowy ruch.",
-      reward: "Większa sprawczość i mniej odkładania.",
+        "Wypisz jedna sytuacje i jedno zdanie, ktore bylo dla Ciebie nie okej.",
+      reward: "+1 analiza jutro lub +8 diamonds",
+    };
+  }
+
+  if (topic === "emocje" || topic === "przeciazenie") {
+    return {
+      title: "Task dnia // reset napiecia",
+      goal: "Zejsc z chaosu do mniejszego tarcia i jednego realnego kroku.",
+      duration: "5 minut",
+      steps: [
+        "Nazwij jedna emocje bez oceniania jej.",
+        "Zrob 10 spokojnych oddechow z dluzszym wydechem.",
+        "Napisz, co jest Twoim jednym zadaniem minimum na dzisiaj.",
+      ],
+      minimumVersion: "Nazwij emocje i zrob 5 spokojnych oddechow.",
+      reward: "+14 light i +10 XP",
     };
   }
 
   return {
-    title: "Zadanie: jeden ruch do przodu",
-    goal: "Zamienić chaos w prosty, wykonalny krok.",
-    duration: "10–15 minut",
+    title: "Task dnia // plan minimum",
+    goal: "Zamienic przeciążenie w maly, wykonalny ruch.",
+    duration: "8-10 minut",
     steps: [
-      "Wybierz jeden obszar, który dziś chcesz poprawić.",
-      "Nazwij jeden mały krok, który da natychmiastowy efekt.",
-      "Zrób go jeszcze dziś, bez czekania na idealny moment.",
+      "Wybierz jedna rzecz, ktora ma najwiekszy sens na teraz.",
+      "Zmniejsz ja do kroku, ktory zajmie mniej niz 10 minut.",
+      "Zrob go jeszcze dzisiaj i odhacz jako wygrana.",
     ],
-    minimumVersion:
-      "Zrób jedną małą rzecz, która potrwa maksymalnie 5 minut.",
-    reward: "Poczucie ruchu, ulga i konkretny postęp.",
+    minimumVersion: "Zrob jeden ruch, ktory potrwa mniej niz 5 minut.",
+    reward: "+12 light, +8 XP i lepszy streak",
   };
 }
 
-function getModuleSystem(module: ModuleType) {
-  switch (module) {
-    case "relationships":
-      return `
-Jesteś ekspertem od relacji, komunikacji, granic, czerwonych flag i dynamiki między ludźmi.
-Pomagaj konkretnie, trafnie i praktycznie.
-`;
-    case "emotions":
-      return `
-Jesteś ekspertem od emocji, napięcia, chaosu psychicznego, samoregulacji i odzyskiwania jasności.
-Pomagaj nowocześnie, konkretnie i wspierająco.
-`;
-    case "quiz":
-      return `
-Jesteś ekspertem od angażujących quizów i krótkiej diagnostyki.
-`;
-    case "task":
-      return `
-Jesteś ekspertem od mikro-zadań, działania i prostych planów minimum.
-`;
-    default:
-      return `
-Jesteś wszechstronnym AI do porządkowania chaosu, decyzji, emocji i kierunku.
-`;
-  }
+function localReply(topic: string, module: ModuleType, message: string) {
+  const insight =
+    topic === "relacje"
+      ? "Wyglada na to, ze najbardziej potrzebujesz odroznic fakty od interpretacji i zobaczyc, czy ta relacja daje spokoj czy kosztuje Cie zbyt duzo energii."
+      : topic === "emocje" || topic === "przeciazenie"
+        ? "Najwazniejsze teraz jest zejsc z przeciazenia do prostszego kontaktu ze soba, zanim pojawia sie kolejne decyzje."
+        : "Wyglada na to, ze potrzebujesz nie tyle kolejnej teorii, ile szybkiego uporzadkowania priorytetu.";
+
+  const now =
+    module === "task"
+      ? "Wybierz jedno male dzialanie na dzisiaj i daj mu 10 minut bez perfekcjonizmu."
+      : module === "quiz"
+        ? "Uruchom krotki test, nazwij wzorzec i potraktuj wynik jako punkt startu do refleksji."
+        : "Nazwij jedna emocje, jeden fakt i jeden kolejny krok. To zwykle najszybciej zmniejsza chaos.";
+
+  const next =
+    "Jesli chcesz, moge od razu przejsc w tryb relacje, emocje, quiz albo task i zbudowac Ci bardziej dopasowana odpowiedz.";
+
+  const supportLine =
+    message.toLowerCase().includes("nie daje rady") ||
+    message.toLowerCase().includes("jest bardzo zle")
+      ? "\n\nDodatkowo: jesli czujesz, ze potrzebujesz pilnego kontaktu z czlowiekiem, skorzystaj z realnego wsparcia zaufanej osoby lub specjalisty."
+      : "";
+
+  return `Wniosek:\n${insight}\n\nCo zrob teraz:\n${now}\n\nCo dalej:\n${next}${supportLine}`;
 }
 
-async function runAgent(
-  openai: OpenAI,
-  instructions: string,
-  input: string,
-  maxOutputTokens = 280
+function pickPalette(prompt: string) {
+  const lowered = prompt.toLowerCase();
+
+  if (lowered.includes("zlot") || lowered.includes("amber")) {
+    return { from: "#ffba6b", to: "#ff8d86", accent: "#ffba6b" };
+  }
+
+  if (lowered.includes("ziel") || lowered.includes("calm")) {
+    return { from: "#7cf0c2", to: "#67d8ff", accent: "#7cf0c2" };
+  }
+
+  return { from: "#67d8ff", to: "#ffba6b", accent: "#67d8ff" };
+}
+
+function createProfilePreview(prompt: string): {
+  preview: ProfilePreview;
+  explanation: string;
+} {
+  const palette = pickPalette(prompt);
+  const lowered = prompt.toLowerCase();
+
+  let title = "Guardian of Calm";
+  if (lowered.includes("social")) title = "Social Balance Lead";
+  if (lowered.includes("spokoj")) title = "Guardian of Calm";
+  if (lowered.includes("premium")) title = "Premium Support Guide";
+
+  const avatar =
+    lowered.includes("wilk")
+      ? "WL"
+      : lowered.includes("lis")
+        ? "LS"
+        : lowered.includes("orzel")
+          ? "OR"
+          : "PX";
+
+  const preview: ProfilePreview = {
+    title,
+    accent: palette.accent,
+    avatar,
+    badge: lowered.includes("founder") ? "Founder badge" : "Daily glow",
+    aura: lowered.includes("social")
+      ? "Otwartosc, spokoj i nowoczesny social premium vibe."
+      : "Lagodny, bezpieczny i wyrazny ton, ktory nie przebodzcowuje.",
+    bio: "Ten profil buduje poczucie postepu, bezpieczenstwa i premium tozsamosci w calej aplikacji.",
+    statusLine: lowered.includes("social")
+      ? "Online now // social premium mode"
+      : "Online now // calm premium mode",
+    clan: lowered.includes("gold")
+      ? "Golden Light Circle"
+      : "Aurora Collective",
+    tags: lowered.includes("social")
+      ? ["social", "clarity", "support"]
+      : ["calm", "growth", "premium support"],
+  };
+
+  return {
+    preview,
+    explanation:
+      "Podglad podkreśla bezpieczny, premium i nowoczesny charakter profilu: wyraźny tytul, spokojny status oraz bardziej lifestyle'owy albo bardziej wyciszony ton zależnie od promptu.",
+  };
+}
+
+function createThemePreview(prompt: string): {
+  preview: ThemePreview;
+  explanation: string;
+} {
+  const palette = pickPalette(prompt);
+  const lowered = prompt.toLowerCase();
+
+  const preview: ThemePreview = {
+    themeName: lowered.includes("social") ? "Glow Social" : "Calm Light Studio",
+    heroTitle: lowered.includes("social")
+      ? "Emocje.\nRelacje.\nCodzienny powrot."
+      : "Spokoj.\nJasnosc.\nPremium psychoedukacja.",
+    heroSubtitle:
+      "Portal laczy AI, journaling, testy, taski, rewardy i mini-gry w jedna nowoczesna aplikacje premium.",
+    notice:
+      "To produkt psychoedukacyjny: wspiera refleksje i codzienny postep, ale nie zastepuje specjalisty i nie sluzy do diagnozy.",
+    accentFrom: palette.from,
+    accentTo: palette.to,
+    badgeText: lowered.includes("growth")
+      ? "Growth mode // conversion ready"
+      : "Season live // calm premium",
+    seasonLabel: lowered.includes("social")
+      ? "Social season"
+      : "Calm season",
+  };
+
+  return {
+    preview,
+    explanation:
+      "Podglad motywu wzmacnia spokojne swiatlo, premium glow i bardziej konwersyjny hero bez odchodzenia od bezpiecznego, psychoedukacyjnego tonu.",
+  };
+}
+
+async function generateOpenAIReply(
+  message: string,
+  module: ModuleType,
+  topic: string
 ) {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: instructions },
-      { role: "user", content: input },
+      {
+        role: "system",
+        content: `Jestes premium AI do psychoedukacji, emocji, relacji i self-helpu.
+Mow po polsku.
+Nie obiecuj terapii, leczenia ani diagnozy.
+Odpowiadaj zyczliwie, nowoczesnie i konkretnie.
+Format:
+1. Wniosek
+2. Co zrob teraz
+3. Co dalej
+Temat: ${topic}
+Modul: ${module}`,
+      },
+      {
+        role: "user",
+        content: message,
+      },
     ],
-    max_tokens: maxOutputTokens,
+    max_tokens: 420,
   });
 
-  return completion.choices[0].message.content?.trim() || "";
+  return completion.choices[0].message.content?.trim() || localReply(topic, module, message);
 }
 
-async function runTriad(openai: OpenAI, message: string, module: ModuleType) {
-  const moduleSystem = getModuleSystem(module);
-
-  const insightPrompt = `
-${moduleSystem}
-
-Rola: INSIGHT
-
-Twoje zadanie:
-- rozpoznać rdzeń problemu,
-- nazwać co tu jest najważniejsze,
-- wychwycić emocje, kontekst i ryzyko błędnej interpretacji.
-
-Bądź krótki i konkretny.
-`;
-
-  const strategyPrompt = `
-${moduleSystem}
-
-Rola: STRATEGY
-
-Twoje zadanie:
-- ułożyć praktyczny kierunek odpowiedzi,
-- wskazać co użytkownik ma zrobić teraz,
-- nadać odpowiedzi strukturę i użyteczność.
-
-Bądź konkretny.
-`;
-
-  const criticPrompt = `
-${moduleSystem}
-
-Rola: CRITIC
-
-Twoje zadanie:
-- sprawdzić jakość odpowiedzi,
-- wskazać czego nie wolno zakładać bez dowodu,
-- dopilnować trafności, bezpieczeństwa i użyteczności.
-
-Bądź krótki.
-`;
-
-  const [insight, strategy, critic] = await Promise.all([
-    runAgent(openai, insightPrompt, message, 180),
-    runAgent(openai, strategyPrompt, message, 180),
-    runAgent(openai, criticPrompt, message, 150),
-  ]);
-
-  return { insight, strategy, critic };
-}
-
-async function synthesizeReply(openai: OpenAI, params: {
-  message: string;
-  module: ModuleType;
-  insight: string;
-  strategy: string;
-  critic: string;
-}) {
-  const { message, module, insight, strategy, critic } = params;
-
-  const finalPrompt = `
-Jesteś finalnym głosem produktu.
-Użytkownik ma widzieć jedno spójne AI.
-
-Zasady:
-- po polsku,
-- konkretnie,
-- nowocześnie,
-- bez lania wody,
-- odpowiedź ma być KRÓTSZA niż standardowy elaborat,
-- najlepiej 3 zwięzłe bloki.
-
-Format:
-1. Krótki wniosek
-2. Co zrobić teraz
-3. Co dalej
-
-Nie pisz o agentach.
-`;
-
-  return runAgent(
-    openai,
-    finalPrompt,
-    `
-MODUŁ:
-${module}
-
-WIADOMOŚĆ UŻYTKOWNIKA:
-${message}
-
-INSIGHT:
-${insight}
-
-STRATEGY:
-${strategy}
-
-CRITIC:
-${critic}
-`,
-    420
-  );
-}
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return Response.json(
-        {
-          ok: false,
-          error: "MISSING_OPENAI_API_KEY",
-          details: "Brakuje zmiennej OPENAI_API_KEY na serwerze.",
-        },
-        { status: 500 }
-      );
+    const body = await request.json();
+    const action =
+      typeof body?.action === "string" ? body.action.toLowerCase() : "chat";
+
+    if (action === "profile") {
+      const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+
+      if (!prompt) {
+        return Response.json(
+          {
+            ok: false,
+            error: "NO_PROFILE_PROMPT",
+            details: "Brakuje komendy do edycji profilu.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const { preview, explanation } = createProfilePreview(prompt);
+      return Response.json({
+        ok: true,
+        preview,
+        explanation,
+      });
     }
 
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    if (action === "admin") {
+      const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
 
-    const body = await req.json();
+      if (!prompt) {
+        return Response.json(
+          {
+            ok: false,
+            error: "NO_ADMIN_PROMPT",
+            details: "Brakuje komendy do edycji motywu.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const { preview, explanation } = createThemePreview(prompt);
+      return Response.json({
+        ok: true,
+        preview,
+        explanation,
+      });
+    }
+
     const message =
       typeof body?.message === "string" ? body.message.trim() : "";
     const module = normalizeModule(body?.module);
@@ -498,11 +487,6 @@ export async function POST(req: Request) {
         ok: true,
         type: "quiz",
         quiz: buildQuiz(topic),
-        meta: {
-          module,
-          topic,
-          engine: "quiz-v1",
-        },
       });
     }
 
@@ -511,39 +495,25 @@ export async function POST(req: Request) {
         ok: true,
         type: "task",
         task: buildTask(topic),
-        meta: {
-          module,
-          topic,
-          engine: "task-v1",
-        },
       });
     }
 
-    const triad = await runTriad(openai, message, module);
-    const reply = await synthesizeReply(openai, {
-      message,
-      module,
-      insight: triad.insight,
-      strategy: triad.strategy,
-      critic: triad.critic,
-    });
+    const reply = process.env.OPENAI_API_KEY
+      ? await generateOpenAIReply(message, module, topic)
+      : localReply(topic, module, message);
 
     return Response.json({
       ok: true,
       type: "text",
       reply,
-      meta: {
-        module,
-        topic,
-        engine: "triad-v3",
-      },
     });
-  } catch (error: any) {
+  } catch (error) {
     return Response.json(
       {
         ok: false,
         error: "SYSTEM_CRASH",
-        details: error?.message || "Unknown server error",
+        details:
+          error instanceof Error ? error.message : "Unknown server error",
       },
       { status: 500 }
     );
