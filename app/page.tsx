@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 
+type WorkflowStep = {
+  name: string;
+  status: "done" | "failed" | "skipped";
+  details: string;
+};
+
 type AgentDetails = {
-  intent?: string;
+  diagnosis?: string;
+  planner?: string;
   expert?: string;
   critic?: string;
+  supervisor?: string;
 };
 
 type Msg = {
   role: "user" | "assistant";
   content: string;
   agents?: AgentDetails;
+  workflow?: WorkflowStep[];
 };
 
 export default function Home() {
@@ -19,7 +28,8 @@ export default function Home() {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content: "Cześć. Jestem Twoim AI. Napisz, z czym mam Ci pomóc.",
+      content:
+        "Cześć. Jestem Twoim systemem AI. Napisz, z czym mam Ci pomóc.",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +64,7 @@ export default function Home() {
           role: "assistant",
           content: data.reply || "Brak odpowiedzi.",
           agents: data.agents || {},
+          workflow: data.workflow || [],
         },
       ]);
     } catch {
@@ -84,7 +95,7 @@ export default function Home() {
       <div
         style={{
           width: "100%",
-          maxWidth: "980px",
+          maxWidth: "1050px",
           display: "flex",
           flexDirection: "column",
           gap: "18px",
@@ -93,7 +104,7 @@ export default function Home() {
         <div style={{ textAlign: "center", marginBottom: "10px" }}>
           <h1 style={{ fontSize: "42px", margin: 0 }}>AI Platform 🚀</h1>
           <p style={{ color: "#b3b3b3", marginTop: "10px" }}>
-            Multi-agent AI: odpowiedź, analiza intencji i kontrola jakości
+            Multi-agent AI z supervisorem i checklistą etapów
           </p>
         </div>
 
@@ -106,7 +117,7 @@ export default function Home() {
             minHeight: "420px",
             display: "flex",
             flexDirection: "column",
-            gap: "12px",
+            gap: "16px",
             boxShadow: "0 0 20px rgba(0,0,0,0.25)",
           }}
         >
@@ -115,19 +126,19 @@ export default function Home() {
               key={index}
               style={{
                 alignSelf: msg.role === "user" ? "flex-end" : "stretch",
-                maxWidth: msg.role === "user" ? "80%" : "100%",
+                maxWidth: msg.role === "user" ? "82%" : "100%",
               }}
             >
               <div
                 style={{
-                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
                   background: msg.role === "user" ? "#4f46e5" : "#1c1c1c",
                   color: "white",
                   padding: "12px 14px",
                   borderRadius: "14px",
                   lineHeight: 1.5,
                   whiteSpace: "pre-wrap",
-                  maxWidth: msg.role === "user" ? "100%" : "85%",
+                  maxWidth: msg.role === "user" ? "100%" : "88%",
+                  marginLeft: msg.role === "user" ? "auto" : "0",
                 }}
               >
                 <strong
@@ -143,9 +154,64 @@ export default function Home() {
                 {msg.content}
               </div>
 
+              {msg.role === "assistant" && msg.workflow && msg.workflow.length > 0 && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    background: "#121212",
+                    border: "1px solid #2a2a2a",
+                    borderRadius: "14px",
+                    padding: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      letterSpacing: "0.4px",
+                      color: "#f59e0b",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    CHECKLISTA SUPERVISORA
+                  </div>
+
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    {msg.workflow.map((step, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          background: "#181818",
+                          border: "1px solid #2d2d2d",
+                          borderRadius: "12px",
+                          padding: "10px 12px",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, marginBottom: "4px" }}>
+                          {step.status === "done"
+                            ? "✅"
+                            : step.status === "failed"
+                            ? "❌"
+                            : "➖"}{" "}
+                          {step.name}
+                        </div>
+                        <div style={{ color: "#cfcfcf", fontSize: "14px" }}>
+                          {step.details}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {msg.role === "assistant" &&
                 msg.agents &&
-                (msg.agents.intent || msg.agents.expert || msg.agents.critic) && (
+                (msg.agents.diagnosis ||
+                  msg.agents.planner ||
+                  msg.agents.expert ||
+                  msg.agents.critic ||
+                  msg.agents.supervisor) && (
                   <div
                     style={{
                       marginTop: "12px",
@@ -154,79 +220,44 @@ export default function Home() {
                       gap: "10px",
                     }}
                   >
-                    {msg.agents.intent && (
-                      <div
-                        style={{
-                          background: "#141414",
-                          border: "1px solid #2a2a2a",
-                          borderRadius: "14px",
-                          padding: "14px",
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            letterSpacing: "0.4px",
-                            color: "#a78bfa",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          AGENT INTENCJI
-                        </div>
-                        {msg.agents.intent}
-                      </div>
+                    {msg.agents.diagnosis && (
+                      <AgentBox
+                        title="AGENT DIAGNOZY"
+                        color="#a78bfa"
+                        content={msg.agents.diagnosis}
+                      />
+                    )}
+
+                    {msg.agents.planner && (
+                      <AgentBox
+                        title="AGENT PLANOWANIA"
+                        color="#f59e0b"
+                        content={msg.agents.planner}
+                      />
                     )}
 
                     {msg.agents.expert && (
-                      <div
-                        style={{
-                          background: "#141414",
-                          border: "1px solid #2a2a2a",
-                          borderRadius: "14px",
-                          padding: "14px",
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            letterSpacing: "0.4px",
-                            color: "#60a5fa",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          AGENT EKSPERCKI
-                        </div>
-                        {msg.agents.expert}
-                      </div>
+                      <AgentBox
+                        title="AGENT EKSPERCKI"
+                        color="#60a5fa"
+                        content={msg.agents.expert}
+                      />
                     )}
 
                     {msg.agents.critic && (
-                      <div
-                        style={{
-                          background: "#141414",
-                          border: "1px solid #2a2a2a",
-                          borderRadius: "14px",
-                          padding: "14px",
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            letterSpacing: "0.4px",
-                            color: "#34d399",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          AGENT KONTROLI
-                        </div>
-                        {msg.agents.critic}
-                      </div>
+                      <AgentBox
+                        title="AGENT KONTROLI"
+                        color="#34d399"
+                        content={msg.agents.critic}
+                      />
+                    )}
+
+                    {msg.agents.supervisor && (
+                      <AgentBox
+                        title="SUPERVISOR"
+                        color="#f472b6"
+                        content={msg.agents.supervisor}
+                      />
                     )}
                   </div>
                 )}
@@ -243,7 +274,7 @@ export default function Home() {
                 color: "#bdbdbd",
               }}
             >
-              Agenci analizują...
+              Agenci analizują i supervisor sprawdza etapy...
             </div>
           )}
         </div>
@@ -291,5 +322,40 @@ export default function Home() {
         </div>
       </div>
     </main>
+  );
+}
+
+function AgentBox({
+  title,
+  color,
+  content,
+}: {
+  title: string;
+  color: string;
+  content: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "#141414",
+        border: "1px solid #2a2a2a",
+        borderRadius: "14px",
+        padding: "14px",
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "12px",
+          fontWeight: 700,
+          letterSpacing: "0.4px",
+          color,
+          marginBottom: "8px",
+        }}
+      >
+        {title}
+      </div>
+      {content}
+    </div>
   );
 }
