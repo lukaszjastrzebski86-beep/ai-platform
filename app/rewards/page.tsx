@@ -33,9 +33,15 @@ const adRewards = [
   },
 ];
 
+const seasonDrops = [
+  "Season pass z 7-dniowym rytualem i odblokowywaniem mikronagrod.",
+  "Calm drops: kosmetyczne skorki, motywy i badge za codzienny streak.",
+  "Social-lite boosts: wspierajace wiadomosci, glow-up profilu i specjalne questy.",
+];
+
 export default function RewardsPage() {
   const { state, derived, claimDailyReward, spinWheel, watchRewardedAd } = useApp();
-  const [lastReward, setLastReward] = useState<string>("");
+  const [lastReward, setLastReward] = useState("");
 
   function handleDaily() {
     const reward = claimDailyReward();
@@ -59,7 +65,7 @@ export default function RewardsPage() {
   return (
     <AppShell
       title="Rewardy i economy"
-      subtitle="Nagrody sa tu systemem motywacji, a nie hałasem. Kazda akcja daje drobny return: krysztaly, swiatlo, streak, sloty i premium preview."
+      subtitle="Nagrody sa tu systemem motywacji, a nie halasem. Kazda akcja daje drobny return: krysztaly, swiatlo, streak, sloty i premium preview."
       heroCode="RW"
       rightPanel={
         <div className="right-list">
@@ -140,6 +146,27 @@ export default function RewardsPage() {
       <div className="result-box">
         <strong>Ostatni reward</strong>
         <p>{lastReward || "Tu pojawi sie ostatnio odblokowany bonus, chest albo ad reward."}</p>
+      </div>
+
+      <div className="split-grid">
+        <div className="list-panel">
+          <div className="section-headline">Season ideas</div>
+          <div className="sheet-list">
+            {seasonDrops.map((item) => (
+              <div key={item} className="sheet-item">
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="result-box">
+          <strong>Proponowana zmiana</strong>
+          <p>
+            Najmocniej rozbudowalbym tu sezonowe warstwy i bardziej emocjonalne
+            nagrody wizualne, bo to zwykle podbija retencje bardziej niz sama waluta.
+          </p>
+        </div>
       </div>
 
       <div className="list-panel">

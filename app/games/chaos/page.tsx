@@ -6,7 +6,7 @@ export default function ChaosPage() {
   return (
     <AppShell
       title="Rozbij chaos"
-      subtitle="Szybka gra refleksowa do resetu uwagi. Krotka, czytelna i wystarczajaco angażujaca, by domknac petle aktywnosci bez przebodzcowania."
+      subtitle="Szybka gra refleksowa do resetu uwagi. Krotka, czytelna i wystarczajaco angazujaca, by domknac petle aktywnosci bez przebodzcowania."
       heroCode="CH"
       rightPanel={<SafetyNotice compact />}
     >

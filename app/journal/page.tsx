@@ -5,7 +5,14 @@ import AppShell from "@/components/AppShell";
 import SafetyNotice from "@/components/SafetyNotice";
 import { useApp } from "@/contexts/AppContext";
 
-const moods = ["Spokoj", "Wdzięcznosc", "Napiecie", "Chaos", "Ulga", "Motywacja"];
+const moods = [
+  "Spokoj",
+  "Wdziecznosc",
+  "Napiecie",
+  "Chaos",
+  "Ulga",
+  "Motywacja",
+];
 
 export default function JournalPage() {
   const { state, addJournalEntry } = useApp();
@@ -38,7 +45,9 @@ export default function JournalPage() {
           <div className="kpi-card highlight">
             <div className="kpi-label">Historia</div>
             <div className="kpi-value">{state.journalEntries.length}</div>
-            <div className="small-note">Kazdy wpis doklada light, XP i lepsza orientacje w sobie.</div>
+            <div className="small-note">
+              Kazdy wpis doklada light, XP i lepsza orientacje w sobie.
+            </div>
           </div>
           <SafetyNotice compact />
         </div>

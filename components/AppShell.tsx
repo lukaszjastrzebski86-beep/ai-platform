@@ -6,26 +6,56 @@ import { motion } from "framer-motion";
 import FloatingBackground from "./FloatingBackground";
 import { useApp } from "@/contexts/AppContext";
 
-const navItems = [
-  { href: "/", label: "Hub", meta: "overview" },
-  { href: "/onboarding", label: "Start", meta: "setup" },
-  { href: "/chat", label: "Chat AI", meta: "conversations" },
-  { href: "/relationships", label: "Relacje", meta: "signals" },
-  { href: "/emotions", label: "Emocje", meta: "regulation" },
-  { href: "/quiz", label: "Quiz", meta: "diagnostics" },
-  { href: "/tasks", label: "Zadania", meta: "quests" },
-  { href: "/journal", label: "Journal", meta: "mood log" },
-  { href: "/rewards", label: "Rewardy", meta: "loot" },
-  { href: "/games", label: "Gry", meta: "arcade" },
-  { href: "/games/snake", label: "Snake", meta: "reflex" },
-  { href: "/games/clicker", label: "Clicker", meta: "idle rush" },
-  { href: "/games/memory", label: "Memory", meta: "focus" },
-  { href: "/games/chaos", label: "Chaos", meta: "calm reflex" },
-  { href: "/premium", label: "Premium", meta: "plans" },
-  { href: "/profile", label: "Profil", meta: "identity" },
-  { href: "/admin", label: "Admin Studio", meta: "live edit" },
-  { href: "/legal", label: "Legal", meta: "safe copy" },
+type NavSection = "home" | "practice" | "play" | "profile" | "studio";
+
+const primaryNav: Array<{
+  href: string;
+  label: string;
+  section: NavSection;
+}> = [
+  { href: "/", label: "Home", section: "home" },
+  { href: "/practice", label: "Practice", section: "practice" },
+  { href: "/play", label: "Play", section: "play" },
+  { href: "/profile", label: "Profile", section: "profile" },
+  { href: "/admin", label: "Studio", section: "studio" },
 ];
+
+const sectionLabels: Record<NavSection, string> = {
+  home: "Quick routes",
+  practice: "Inside practice",
+  play: "Inside play",
+  profile: "Inside profile",
+  studio: "Inside studio",
+};
+
+const sectionLinks: Record<NavSection, Array<{ href: string; label: string }>> = {
+  home: [
+    { href: "/practice", label: "Open Practice" },
+    { href: "/play", label: "Open Play" },
+    { href: "/profile", label: "Your Profile" },
+  ],
+  practice: [
+    { href: "/chat", label: "AI Chat" },
+    { href: "/journal", label: "Journal" },
+    { href: "/quiz", label: "Quizy" },
+    { href: "/tasks", label: "Sciezki" },
+    { href: "/emotions", label: "Emocje" },
+    { href: "/relationships", label: "Relacje" },
+  ],
+  play: [
+    { href: "/rewards", label: "Rewardy" },
+    { href: "/games", label: "Mini-gry" },
+  ],
+  profile: [
+    { href: "/profile", label: "Profil" },
+    { href: "/premium", label: "Premium" },
+    { href: "/onboarding", label: "Onboarding" },
+  ],
+  studio: [
+    { href: "/admin", label: "Admin Studio" },
+    { href: "/legal", label: "Legal" },
+  ],
+};
 
 type AppShellProps = {
   title: string;
@@ -38,6 +68,8 @@ type AppShellProps = {
 
 function getThemeClass(pathname: string) {
   if (pathname === "/") return "home";
+  if (pathname.startsWith("/practice")) return "chat";
+  if (pathname.startsWith("/play")) return "games";
   if (pathname.startsWith("/onboarding")) return "onboarding";
   if (pathname.startsWith("/chat")) return "chat";
   if (pathname.startsWith("/relationships")) return "relationships";
@@ -49,13 +81,50 @@ function getThemeClass(pathname: string) {
   if (pathname.startsWith("/games/snake")) return "snake";
   if (pathname.startsWith("/games/clicker")) return "clicker";
   if (pathname.startsWith("/games/memory")) return "memory";
-  if (pathname.startsWith("/games/chaos")) return "games";
   if (pathname.startsWith("/games")) return "games";
   if (pathname.startsWith("/premium")) return "premium";
   if (pathname.startsWith("/profile")) return "profile";
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname.startsWith("/legal")) return "legal";
   return "home";
+}
+
+function getNavSection(pathname: string): NavSection {
+  if (pathname === "/") return "home";
+
+  if (
+    pathname.startsWith("/practice") ||
+    pathname.startsWith("/chat") ||
+    pathname.startsWith("/relationships") ||
+    pathname.startsWith("/emotions") ||
+    pathname.startsWith("/quiz") ||
+    pathname.startsWith("/tasks") ||
+    pathname.startsWith("/journal")
+  ) {
+    return "practice";
+  }
+
+  if (
+    pathname.startsWith("/play") ||
+    pathname.startsWith("/rewards") ||
+    pathname.startsWith("/games")
+  ) {
+    return "play";
+  }
+
+  if (pathname.startsWith("/admin")) {
+    return "studio";
+  }
+
+  return "profile";
+}
+
+function isRouteActive(pathname: string, href: string) {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function AppShell({
@@ -68,6 +137,7 @@ export default function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const themeClass = getThemeClass(pathname);
+  const navSection = getNavSection(pathname);
   const { state, derived } = useApp();
 
   return (
@@ -86,17 +156,31 @@ export default function AppShell({
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.45 }}
         >
-          <div className="brand-pill">
-            <div
-              className="brand-mark"
-              style={{
-                background: `linear-gradient(135deg, ${state.theme.accentFrom}, ${state.theme.accentTo})`,
-              }}
-            />
-            <div>
-              <div className="brand-label">{state.theme.themeName}</div>
-              <div className="brand-subtitle">{state.theme.notice}</div>
+          <div className="topbar-left">
+            <div className="brand-pill">
+              <div
+                className="brand-mark"
+                style={{
+                  background: `linear-gradient(135deg, ${state.theme.accentFrom}, ${state.theme.accentTo})`,
+                }}
+              />
+              <div>
+                <div className="brand-label">{state.theme.themeName}</div>
+                <div className="brand-subtitle">{state.theme.notice}</div>
+              </div>
             </div>
+
+            <nav className="top-nav" aria-label="Primary">
+              {primaryNav.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`top-nav-link ${navSection === item.section ? "active" : ""}`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </div>
 
           <div className="topbar-right">
@@ -114,19 +198,15 @@ export default function AppShell({
               </div>
             </div>
             <div className="top-chip">
-              <span>DX</span>
-              <strong>{state.diamonds}</strong>
+              <span>STREAK</span>
+              <strong>{state.streak}</strong>
             </div>
             <div className="top-chip">
-              <span>LT</span>
+              <span>LIGHT</span>
               <strong>{state.light}</strong>
             </div>
             <div className="top-chip">
-              <span>EN</span>
-              <strong>{state.energy}</strong>
-            </div>
-            <div className="top-chip">
-              <span>LV</span>
+              <span>LEVEL</span>
               <strong>{derived.level}</strong>
             </div>
           </div>
@@ -139,26 +219,51 @@ export default function AppShell({
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.45, delay: 0.05 }}
           >
-            <div className="sidebar-title">World map</div>
-            <div className="nav-list">
-              {navItems.map((item, index) => {
-                const active = pathname === item.href;
+            <div className="sidebar-title">Today</div>
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`nav-item ${active ? "active" : ""}`}
-                  >
-                    <div className="nav-code">{String(index + 1).padStart(2, "0")}</div>
-                    <div className="nav-copy">
-                      <div className="nav-label">{item.label}</div>
-                      <div className="nav-meta">{item.meta}</div>
-                    </div>
-                    <div className="nav-arrow">/</div>
-                  </Link>
-                );
-              })}
+            <div className="sidebar-feature-card">
+              <div className="sidebar-feature-label">Suggested next move</div>
+              <div className="sidebar-feature-title">
+                {state.journalEntries.length < 2 ? "Start with a check-in" : "Open your calm flow"}
+              </div>
+              <div className="sidebar-feature-copy">
+                {state.journalEntries.length < 2
+                  ? "Najpierw nazwij stan. Potem przejdz do AI albo quizu."
+                  : "Masz juz baze refleksji, wiec dobrym ruchem jest AI albo jedno mikro-zadanie."}
+              </div>
+            </div>
+
+            <div className="sidebar-metrics">
+              <div className="sidebar-metric">
+                <span>Analizy</span>
+                <strong>{state.usage.analysesLeft}</strong>
+              </div>
+              <div className="sidebar-metric">
+                <span>Testy</span>
+                <strong>{state.usage.testsLeft}</strong>
+              </div>
+              <div className="sidebar-metric">
+                <span>Preview</span>
+                <strong>{state.usage.premiumMinutes} min</strong>
+              </div>
+            </div>
+
+            <div className="sidebar-section-label">{sectionLabels[navSection]}</div>
+            <div className="nav-sublist">
+              {sectionLinks[navSection].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-subitem ${isRouteActive(pathname, item.href) ? "active" : ""}`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="sidebar-note">
+              To ma byc portal, do ktorego wraca sie codziennie bez zmeczenia.
+              Dlatego hierarchia jest spokojna, a wejscia sa grupowane.
             </div>
           </motion.aside>
 
@@ -183,22 +288,55 @@ export default function AppShell({
                       </strong>
                     </div>
                     <div className="info-pill">
-                      <span>Streak</span>
+                      <span>Calm streak</span>
                       <strong>{state.streak} days</strong>
                     </div>
                     <div className="info-pill">
-                      <span>Clan</span>
+                      <span>Circle</span>
                       <strong>{state.profile.clan}</strong>
                     </div>
                   </div>
                 </div>
 
-                <div className="hero-orb">
-                  <div className="hero-orb-glow" />
-                  <div className="hero-orb-ring hero-orb-ring-large" />
-                  <div className="hero-orb-ring hero-orb-ring-small" />
-                  <div className="hero-orb-core">{heroCode ?? title.slice(0, 2).toUpperCase()}</div>
-                  <div className="hero-orb-caption">{state.profile.statusLine}</div>
+                <div className="hero-preview-shell">
+                  <div className="hero-preview-glow" />
+                  <div className="hero-preview-device">
+                    <div className="hero-preview-topline">
+                      <div className="hero-preview-title">{heroCode ?? "LM"}</div>
+                      <div className="hero-preview-chip">{state.theme.themeName}</div>
+                    </div>
+
+                    <div className="hero-preview-card hero-preview-card-primary">
+                      <div className="hero-preview-label">Today</div>
+                      <strong>{state.journalEntries.length < 2 ? "Quiet check-in" : "Deep clarity"}</strong>
+                      <span>
+                        {state.journalEntries.length < 2
+                          ? "2 min journaling before AI."
+                          : "AI + one small action for today."}
+                      </span>
+                    </div>
+
+                    <div className="hero-preview-card">
+                      <div className="hero-preview-label">Reward loop</div>
+                      <strong>{derived.dailyReady ? "Daily reward ready" : "Return later today"}</strong>
+                      <span>{state.diamonds} diamonds and {state.light} light in your account.</span>
+                    </div>
+
+                    <div className="hero-preview-footer">
+                      <div className="hero-preview-stat">
+                        <span>Mood logs</span>
+                        <strong>{state.journalEntries.length}</strong>
+                      </div>
+                      <div className="hero-preview-stat">
+                        <span>Level</span>
+                        <strong>{derived.level}</strong>
+                      </div>
+                      <div className="hero-preview-stat">
+                        <span>Streak</span>
+                        <strong>{state.streak}</strong>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
@@ -232,8 +370,8 @@ export default function AppShell({
                 <div className="result-box">
                   <strong>{state.theme.notice}</strong>
                   <p>
-                    Spina to feed aktywnosci, rewardy, gry i czat w jedno
-                    doswiadczenie premium.
+                    Kazdy ekran ma prowadzic do spokojniejszego kolejnego ruchu,
+                    a nie tylko pokazywac funkcje.
                   </p>
                 </div>
 

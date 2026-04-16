@@ -12,6 +12,8 @@ type ModuleType =
   | "quiz"
   | "task";
 
+type ResponseMode = "short" | "deep";
+
 type QuizPayload = {
   title: string;
   intro: string;
@@ -66,7 +68,7 @@ const moduleMeta: Record<
     prompts: [
       "Mam za duzo w glowie i potrzebuje prostego planu minimum.",
       "Pomoz mi uporzadkowac, co jest teraz najwazniejsze.",
-      "Chce odzyskac spokoj bez długiego elaboratu.",
+      "Chce odzyskac spokoj bez dlugiego elaboratu.",
     ],
   },
   relationships: {
@@ -80,7 +82,7 @@ const moduleMeta: Record<
   },
   emotions: {
     title: "Emocje",
-    copy: "Nazywanie stanu, obniżanie tarcia i prosty ruch dalej.",
+    copy: "Nazywanie stanu, obnizanie tarcia i prosty ruch dalej.",
     prompts: [
       "Mam napiecie i chce zrozumiec, czego teraz potrzebuje.",
       "Pomoz mi nazwac to, co dzieje sie dzisiaj we mnie.",
@@ -115,17 +117,17 @@ const styleOptions: Array<{
   {
     id: "nebula",
     title: "Nebula",
-    copy: "Miękki, spokojny styl premium z glowem.",
+    copy: "Miekki, spokojny styl premium z glowem.",
   },
   {
     id: "social",
     title: "Social",
-    copy: "Lżejszy, cieplejszy rytm bardziej lifestyle niż studio.",
+    copy: "Lzejszy, cieplejszy rytm bardziej lifestyle niz studio.",
   },
   {
     id: "focus",
     title: "Focus",
-    copy: "Mniej ozdobników, więcej koncentracji i konkretu.",
+    copy: "Mniej ozdobnikow, wiecej koncentracji i konkretu.",
   },
 ];
 
@@ -137,6 +139,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const { state, setChatStyle, updateState } = useApp();
   const [activeModule, setActiveModule] = useState<ModuleType>("general");
+  const [responseMode, setResponseMode] = useState<ResponseMode>("short");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -232,6 +235,7 @@ export default function ChatPage() {
           action: "chat",
           message: content,
           module: activeModule,
+          responseMode,
         }),
       });
 
@@ -257,12 +261,10 @@ export default function ChatPage() {
         updateState({
           usage: {
             ...state.usage,
-            testsLeft:
-              state.usage.testsLeft - (needsTestSlot ? 1 : 0),
+            testsLeft: state.usage.testsLeft - (needsTestSlot ? 1 : 0),
             analysesLeft:
               state.usage.analysesLeft - (needsAnalysisSlot ? 1 : 0),
-            aiCredits:
-              state.usage.aiCredits - (needsTaskSlot ? 1 : 0),
+            aiCredits: state.usage.aiCredits - (needsTaskSlot ? 1 : 0),
           },
         });
       }
@@ -356,6 +358,30 @@ export default function ChatPage() {
             </div>
           </div>
 
+          <div className="list-panel">
+            <div className="section-headline">Depth</div>
+            <div className="stack">
+              <button
+                className={`style-chip ${responseMode === "short" ? "active" : ""}`}
+                onClick={() => setResponseMode("short")}
+              >
+                <span className="style-title">Smart short</span>
+                <span className="style-copy">
+                  Szybki, uporzadkowany insight i natychmiastowy krok.
+                </span>
+              </button>
+              <button
+                className={`style-chip ${responseMode === "deep" ? "active" : ""}`}
+                onClick={() => setResponseMode("deep")}
+              >
+                <span className="style-title">Deep mode</span>
+                <span className="style-copy">
+                  Bardziej premium, bardziej refleksyjnie i z szerszym kontekstem.
+                </span>
+              </button>
+            </div>
+          </div>
+
           <SafetyNotice compact />
         </div>
       }
@@ -392,6 +418,9 @@ export default function ChatPage() {
           <div className="kpi-card">
             <div className="kpi-label">Biezacy modul</div>
             <div className="kpi-value">{activeMeta.title}</div>
+          </div>
+          <div className="status-pill">
+            {responseMode === "short" ? "Smart short" : "Deep mode"}
           </div>
           <button
             className="action-btn"
@@ -472,7 +501,7 @@ export default function ChatPage() {
           />
           <div className="chat-composer-footer">
             <div className="small-note">
-              Modul: {activeMeta.title} // ton: psychoedukacja premium
+              Modul: {activeMeta.title} // tryb: {responseMode} // ton: psychoedukacja premium
             </div>
             <button
               className="action-btn"

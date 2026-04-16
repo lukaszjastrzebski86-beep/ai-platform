@@ -3,6 +3,13 @@ import AppShell from "@/components/AppShell";
 import PortalCard from "@/components/PortalCard";
 import SafetyNotice from "@/components/SafetyNotice";
 
+const connectionPrompts = [
+  "Po czym poznaje, ze czuje sie przy tej osobie bezpiecznie?",
+  "Gdzie w tej relacji zaczynam za bardzo rezygnowac z siebie?",
+  "Jakie jedno zdanie pomogloby mi spokojnie nazwac granice?",
+  "Czy ta relacja daje wiecej ciepla, czy wiecej napiecia?",
+];
+
 export default function RelationshipsPage() {
   return (
     <AppShell
@@ -13,7 +20,7 @@ export default function RelationshipsPage() {
     >
       <div className="cards-grid-3">
         <PortalCard
-          title="Sygaly ostrzegawcze"
+          title="Sygnaly ostrzegawcze"
           text="Mapa czerwonych flag, sygnalow presji i zachowan, ktore warto nazwac po imieniu."
           icon="RF"
           badge="clarity"
@@ -45,7 +52,7 @@ export default function RelationshipsPage() {
             </div>
             <div className="sheet-item">
               <span className="sheet-step">2.</span>
-              Czy moje granice sa slyszane bez karania cisza, presja albo winą?
+              Czy moje granice sa slyszane bez karania cisza, presja albo wina?
             </div>
             <div className="sheet-item">
               <span className="sheet-step">3.</span>
@@ -69,6 +76,25 @@ export default function RelationshipsPage() {
             </Link>
           </div>
         </div>
+      </div>
+
+      <div className="cards-grid-4">
+        {connectionPrompts.map((prompt) => (
+          <div key={prompt} className="spotlight-card">
+            <div className="section-headline">Daily prompt</div>
+            <div className="spotlight-title">Relacyjny check-in</div>
+            <div className="spotlight-copy">{prompt}</div>
+            <div className="spotlight-action">Zapisz w journal albo przenies do AI</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="result-box">
+        <strong>Zmiana produktowa, ktora polecam</strong>
+        <p>
+          Dla relacji warto mocniej wejsc w codzienne pytania i lekkie prompt cards,
+          bo to daje efekt podobny do Paired: mniejszy prog wejscia i wieksza regularnosc.
+        </p>
       </div>
     </AppShell>
   );

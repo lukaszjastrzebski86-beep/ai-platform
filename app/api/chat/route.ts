@@ -7,6 +7,8 @@ type ModuleType =
   | "quiz"
   | "task";
 
+type ResponseMode = "short" | "deep";
+
 type QuizPayload = {
   title: string;
   intro: string;
@@ -69,6 +71,10 @@ function normalizeModule(value: unknown): ModuleType {
   return "general";
 }
 
+function normalizeResponseMode(value: unknown): ResponseMode {
+  return value === "deep" ? "deep" : "short";
+}
+
 function inferTopic(text: string) {
   const value = text.toLowerCase();
 
@@ -76,6 +82,7 @@ function inferTopic(text: string) {
     value.includes("relac") ||
     value.includes("granic") ||
     value.includes("partner") ||
+    value.includes("zwiazek") ||
     value.includes("ona") ||
     value.includes("on")
   ) {
@@ -87,7 +94,6 @@ function inferTopic(text: string) {
     value.includes("chaos") ||
     value.includes("napi") ||
     value.includes("stres") ||
-    value.includes("lęk") ||
     value.includes("lek")
   ) {
     return "emocje";
@@ -160,7 +166,11 @@ function buildQuiz(topic: string): QuizPayload {
         {
           id: "q2",
           question: "Jak szybko wracasz do spokoju po trudnym momencie?",
-          options: ["A) Dosyc szybko", "B) Potrzebuje chwili", "C) Bardzo trudno"],
+          options: [
+            "A) Dosyc szybko",
+            "B) Potrzebuje chwili",
+            "C) Bardzo trudno",
+          ],
         },
         {
           id: "q3",
@@ -245,7 +255,7 @@ function buildTask(topic: string): TaskPayload {
 
   return {
     title: "Task dnia // plan minimum",
-    goal: "Zamienic przeciążenie w maly, wykonalny ruch.",
+    goal: "Zamienic przeciazenie w maly, wykonalny ruch.",
     duration: "8-10 minut",
     steps: [
       "Wybierz jedna rzecz, ktora ma najwiekszy sens na teraz.",
@@ -257,31 +267,49 @@ function buildTask(topic: string): TaskPayload {
   };
 }
 
-function localReply(topic: string, module: ModuleType, message: string) {
+function localReply(
+  topic: string,
+  module: ModuleType,
+  message: string,
+  responseMode: ResponseMode
+) {
   const insight =
     topic === "relacje"
-      ? "Wyglada na to, ze najbardziej potrzebujesz odroznic fakty od interpretacji i zobaczyc, czy ta relacja daje spokoj czy kosztuje Cie zbyt duzo energii."
+      ? "Wyglada na to, ze najbardziej potrzebujesz odroznic fakty od interpretacji i zobaczyc, czy ta relacja daje spokoj, czy kosztuje Cie zbyt duzo energii."
       : topic === "emocje" || topic === "przeciazenie"
         ? "Najwazniejsze teraz jest zejsc z przeciazenia do prostszego kontaktu ze soba, zanim pojawia sie kolejne decyzje."
         : "Wyglada na to, ze potrzebujesz nie tyle kolejnej teorii, ile szybkiego uporzadkowania priorytetu.";
 
-  const now =
+  const nowStep =
     module === "task"
       ? "Wybierz jedno male dzialanie na dzisiaj i daj mu 10 minut bez perfekcjonizmu."
       : module === "quiz"
         ? "Uruchom krotki test, nazwij wzorzec i potraktuj wynik jako punkt startu do refleksji."
         : "Nazwij jedna emocje, jeden fakt i jeden kolejny krok. To zwykle najszybciej zmniejsza chaos.";
 
-  const next =
+  const nextStep =
     "Jesli chcesz, moge od razu przejsc w tryb relacje, emocje, quiz albo task i zbudowac Ci bardziej dopasowana odpowiedz.";
+
+  const deepContext =
+    topic === "relacje"
+      ? "W relacjach najbardziej myli nas mieszanie sygnalow z nadzieja. Dlatego lepiej najpierw nazwac powtarzalne sytuacje i koszty, a dopiero potem wyciagac wieksze wnioski."
+      : topic === "emocje" || topic === "przeciazenie"
+        ? "Kiedy stan jest rozchwiany, zwykle nie potrzeba wiecej presji, tylko mniej tarcia. Najbardziej pomaga prosty rytm: nazwij stan, uspokoj cialo, wybierz mikrokrok."
+        : "Jesli wszystko wydaje sie rozmyte, warto na chwile odsunac wielkie plany i zlapac jeden sensowny ruch. To odbudowuje sprawczosc szybciej niz probowanie ogarnac wszystko naraz.";
 
   const supportLine =
     message.toLowerCase().includes("nie daje rady") ||
-    message.toLowerCase().includes("jest bardzo zle")
-      ? "\n\nDodatkowo: jesli czujesz, ze potrzebujesz pilnego kontaktu z czlowiekiem, skorzystaj z realnego wsparcia zaufanej osoby lub specjalisty."
+    message.toLowerCase().includes("jest bardzo zle") ||
+    message.toLowerCase().includes("nie mam sily") ||
+    message.toLowerCase().includes("wszystko mnie przerasta")
+      ? "\n\nJesli czujesz, ze potrzebujesz pilnego kontaktu z czlowiekiem, skorzystaj z realnego wsparcia zaufanej osoby lub specjalisty."
       : "";
 
-  return `Wniosek:\n${insight}\n\nCo zrob teraz:\n${now}\n\nCo dalej:\n${next}${supportLine}`;
+  if (responseMode === "deep") {
+    return `Wniosek:\n${insight}\n${deepContext}\n\nCo zrob teraz:\n${nowStep}\nJesli chcesz, ogranicz ten ruch do jednej rzeczy, ktora da sie wykonac jeszcze dzisiaj bez nadmiernego cisnienia.\n\nCo dalej:\n${nextStep}\nMozemy tez rozpisac to na spokojny plan minimum, prompt do journalu albo quiz dopasowany do Twojej sytuacji.${supportLine}`;
+  }
+
+  return `Wniosek:\n${insight}\n\nCo zrob teraz:\n${nowStep}\n\nCo dalej:\n${nextStep}${supportLine}`;
 }
 
 function pickPalette(prompt: string) {
@@ -342,7 +370,7 @@ function createProfilePreview(prompt: string): {
   return {
     preview,
     explanation:
-      "Podglad podkreśla bezpieczny, premium i nowoczesny charakter profilu: wyraźny tytul, spokojny status oraz bardziej lifestyle'owy albo bardziej wyciszony ton zależnie od promptu.",
+      "Podglad podkresla bezpieczny, premium i nowoczesny charakter profilu: wyrazny tytul, spokojny status oraz bardziej lifestyle'owy albo bardziej wyciszony ton zaleznie od promptu.",
   };
 }
 
@@ -382,7 +410,8 @@ function createThemePreview(prompt: string): {
 async function generateOpenAIReply(
   message: string,
   module: ModuleType,
-  topic: string
+  topic: string,
+  responseMode: ResponseMode
 ) {
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -397,22 +426,29 @@ async function generateOpenAIReply(
 Mow po polsku.
 Nie obiecuj terapii, leczenia ani diagnozy.
 Odpowiadaj zyczliwie, nowoczesnie i konkretnie.
-Format:
+Ton ma byc bezpieczny, cieply i premium.
+Format odpowiedzi:
 1. Wniosek
 2. Co zrob teraz
 3. Co dalej
+Jesli tryb to deep, daj wiecej kontekstu i 5-7 zdan lacznie.
+Jesli tryb to short, badz zgrabny i konkretny.
 Temat: ${topic}
-Modul: ${module}`,
+Modul: ${module}
+Tryb: ${responseMode}`,
       },
       {
         role: "user",
         content: message,
       },
     ],
-    max_tokens: 420,
+    max_tokens: responseMode === "deep" ? 680 : 360,
   });
 
-  return completion.choices[0].message.content?.trim() || localReply(topic, module, message);
+  return (
+    completion.choices[0].message.content?.trim() ||
+    localReply(topic, module, message, responseMode)
+  );
 }
 
 export async function POST(request: Request) {
@@ -468,13 +504,14 @@ export async function POST(request: Request) {
     const message =
       typeof body?.message === "string" ? body.message.trim() : "";
     const module = normalizeModule(body?.module);
+    const responseMode = normalizeResponseMode(body?.responseMode);
 
     if (!message) {
       return Response.json(
         {
           ok: false,
           error: "NO_VALID_MESSAGE",
-          details: "Brakuje wiadomości użytkownika.",
+          details: "Brakuje wiadomosci uzytkownika.",
         },
         { status: 400 }
       );
@@ -499,8 +536,8 @@ export async function POST(request: Request) {
     }
 
     const reply = process.env.OPENAI_API_KEY
-      ? await generateOpenAIReply(message, module, topic)
-      : localReply(topic, module, message);
+      ? await generateOpenAIReply(message, module, topic, responseMode)
+      : localReply(topic, module, message, responseMode);
 
     return Response.json({
       ok: true,

@@ -18,7 +18,7 @@ export default function LegalPage() {
         <div className="profile-panel">
           <div className="section-headline">Disclaimery</div>
           <div className="reward-copy">
-            To produkt edukacyjny i psychoedukacyjny. Nie zastępuje specjalisty
+            To produkt edukacyjny i psychoedukacyjny. Nie zastepuje specjalisty
             i nie sluzy do diagnozy.
           </div>
         </div>

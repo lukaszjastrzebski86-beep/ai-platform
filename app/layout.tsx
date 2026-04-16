@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { AppProvider } from "@/contexts/AppContext";
 
 export const metadata: Metadata = {
-  title: "Pulse Rift Portal",
+  title: "Luma | emocje, relacje i spokoj premium",
   description:
-    "Premium gaming-social AI portal with chat, rewards, profiles, admin studio and arcade loops.",
+    "Premium portal psychoedukacyjny do emocji, relacji, journalingu, quizow i codziennych rytualow.",
 };
 
 export default function RootLayout({
