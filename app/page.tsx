@@ -19,30 +19,35 @@ const modules: {
   title: string;
   desc: string;
   emoji: string;
+  color: string;
 }[] = [
   {
     key: "relationships",
     title: "Relacje",
-    desc: "Sygnały, konflikty, granice, komunikacja",
-    emoji: "🤝",
+    desc: "Sygnały, komunikacja, granice i dynamika",
+    emoji: "🤍",
+    color: "linear-gradient(135deg, #9ad7ff, #d7efff)",
   },
   {
     key: "emotions",
     title: "Emocje",
-    desc: "Chaos, napięcie, nazwanie stanu, regulacja",
+    desc: "Nazwanie stanu, regulacja, odzyskanie spokoju",
     emoji: "🫀",
+    color: "linear-gradient(135deg, #86d8ff, #cfeeff)",
   },
   {
     key: "quiz",
     title: "Quiz",
     desc: "Krótka diagnostyka i pytania prowadzące",
     emoji: "🧠",
+    color: "linear-gradient(135deg, #82cfff, #e0f5ff)",
   },
   {
     key: "task",
     title: "Zadanie",
-    desc: "Mikro-akcja, plan minimum, kolejny krok",
+    desc: "Mikro‑akcje, plan minimum i następny krok",
     emoji: "⚡",
+    color: "linear-gradient(135deg, #7ccfff, #d9f4ff)",
   },
 ];
 
@@ -83,7 +88,7 @@ export default function HomePage() {
     {
       role: "assistant",
       content:
-        "Cześć. Jestem Twoim AI. Pomagam ogarniać relacje, emocje, decyzje i kierunek działania. Wybierz moduł albo napisz od razu, z czym mam Ci pomóc.",
+        "Witaj. Jestem Twoim AI. Pomagam odzyskać jasność, spokój i kierunek w relacjach, emocjach i decyzjach. Wybierz moduł albo napisz, z czym mam Ci pomóc.",
     },
   ]);
 
@@ -165,23 +170,85 @@ export default function HomePage() {
     <main
       style={{
         minHeight: "100vh",
-        background:
-          "radial-gradient(circle at top, rgba(67,56,202,0.22), transparent 26%), radial-gradient(circle at right top, rgba(14,165,233,0.16), transparent 22%), #090d18",
-        color: "#f8fafc",
+        color: "#12355b",
         fontFamily:
           "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        background: `
+          radial-gradient(circle at 10% 15%, rgba(255,255,255,0.95), transparent 16%),
+          radial-gradient(circle at 85% 12%, rgba(255,255,255,0.7), transparent 14%),
+          radial-gradient(circle at 60% 3%, rgba(255,255,255,0.5), transparent 8%),
+          linear-gradient(180deg, #f3fbff 0%, #d8f1ff 28%, #b7e5ff 56%, #96d6ff 100%)
+        `,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       <div
         style={{
-          maxWidth: 1240,
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 0,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            width: 420,
+            height: 420,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(255,255,255,0.7), transparent 70%)",
+            top: -120,
+            left: -80,
+            filter: "blur(10px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: 360,
+            height: 360,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(255,255,255,0.65), transparent 70%)",
+            top: 100,
+            right: -80,
+            filter: "blur(12px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: 300,
+            height: 300,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(255,255,255,0.45), transparent 70%)",
+            bottom: 40,
+            left: "8%",
+            filter: "blur(18px)",
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          maxWidth: 1280,
           margin: "0 auto",
-          padding: "28px 20px 44px",
+          padding: "26px 18px 48px",
         }}
       >
         <section
           style={{
-            padding: "36px 0 18px",
+            borderRadius: 30,
+            padding: "34px 28px",
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.88), rgba(255,255,255,0.48))",
+            border: "1px solid rgba(255,255,255,0.7)",
+            boxShadow:
+              "0 22px 60px rgba(106, 181, 255, 0.30), inset 0 1px 0 rgba(255,255,255,0.9)",
+            backdropFilter: "blur(14px)",
           }}
         >
           <div
@@ -189,104 +256,260 @@ export default function HomePage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 10,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
               borderRadius: 999,
-              padding: "8px 14px",
-              fontSize: 13,
+              padding: "9px 14px",
+              background: "rgba(255,255,255,0.7)",
+              border: "1px solid rgba(136, 204, 255, 0.7)",
+              boxShadow: "0 8px 24px rgba(123, 197, 255, 0.18)",
               marginBottom: 18,
+              fontWeight: 700,
+              color: "#2b6ea8",
+              fontSize: 14,
             }}
           >
-            <span>●</span>
-            <span>Triad AI Engine</span>
+            <span>☁️</span>
+            <span>Heavenly AI Engine</span>
           </div>
 
-          <h1
+          <div
             style={{
-              fontSize: "clamp(34px, 6vw, 62px)",
-              lineHeight: 1.02,
-              margin: 0,
-              fontWeight: 800,
-              maxWidth: 900,
-              letterSpacing: "-0.03em",
+              display: "grid",
+              gridTemplateColumns: "1.2fr 0.8fr",
+              gap: 28,
+              alignItems: "center",
             }}
           >
-            Jedno AI.
-            <br />
-            Więcej jasności, mniej chaosu.
-          </h1>
+            <div>
+              <h1
+                style={{
+                  fontSize: "clamp(34px, 6vw, 68px)",
+                  lineHeight: 0.98,
+                  margin: 0,
+                  fontWeight: 900,
+                  letterSpacing: "-0.04em",
+                  color: "#1b4f81",
+                  textShadow: "0 8px 24px rgba(255,255,255,0.48)",
+                }}
+              >
+                Jedno AI.
+                <br />
+                Więcej światła,
+                <br />
+                mniej chaosu.
+              </h1>
 
-          <p
-            style={{
-              marginTop: 18,
-              maxWidth: 780,
-              fontSize: 18,
-              lineHeight: 1.6,
-              color: "rgba(248,250,252,0.78)",
-            }}
-          >
-            Platforma do relacji, emocji, decyzji, quizów i zadań. Użytkownik
-            widzi jedno spójne AI, a pod maską działa szybka trójca analizy,
-            strategii i kontroli jakości.
-          </p>
-        </section>
+              <p
+                style={{
+                  marginTop: 18,
+                  maxWidth: 720,
+                  fontSize: 18,
+                  lineHeight: 1.65,
+                  color: "#356792",
+                }}
+              >
+                Przestrzeń do relacji, emocji, decyzji, quizów i zadań.
+                Zamiast zwykłego czatu — piękny, spokojny interfejs, który
+                pomaga odzyskać kierunek i poczucie sensu.
+              </p>
 
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 16,
-            marginTop: 26,
-          }}
-        >
-          {[
-            {
-              title: "Światło",
-              desc: "Rozumienie problemu, emocji i prawdziwego rdzenia sytuacji.",
-            },
-            {
-              title: "Energia",
-              desc: "Ruch do przodu, plan minimum, zadania i konkretne kroki.",
-            },
-            {
-              title: "Forma",
-              desc: "Struktura, porządek, decyzja i sens zamiast chaosu.",
-            },
-          ].map((item) => (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 14,
+                  flexWrap: "wrap",
+                  marginTop: 22,
+                }}
+              >
+                <button
+                  style={{
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "14px 22px",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: "linear-gradient(135deg, #52b6ff, #95dfff)",
+                    color: "#07335e",
+                    boxShadow: "0 14px 36px rgba(69, 179, 255, 0.35)",
+                  }}
+                  onClick={() => {
+                    const el = document.getElementById("chat-section");
+                    el?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  Wejdź do AI
+                </button>
+
+                <button
+                  style={{
+                    borderRadius: 999,
+                    padding: "14px 22px",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: "rgba(255,255,255,0.72)",
+                    border: "1px solid rgba(118, 194, 255, 0.75)",
+                    color: "#2f6895",
+                    boxShadow: "0 10px 28px rgba(145, 213, 255, 0.20)",
+                  }}
+                  onClick={() => {
+                    const el = document.getElementById("modules-section");
+                    el?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  Zobacz moduły
+                </button>
+              </div>
+            </div>
+
             <div
-              key={item.title}
               style={{
-                borderRadius: 22,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
-                padding: 20,
-                boxShadow: "0 10px 30px rgba(0,0,0,0.18)",
+                borderRadius: 28,
+                padding: 22,
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.46))",
+                border: "1px solid rgba(255,255,255,0.82)",
+                boxShadow:
+                  "0 16px 40px rgba(105, 177, 255, 0.24), inset 0 1px 0 rgba(255,255,255,0.95)",
               }}
             >
               <div
                 style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  marginBottom: 8,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: 14,
                 }}
               >
-                {item.title}
+                <StatCard value="3" label="Ukryte silniki AI" icon="✨" />
+                <StatCard value="4" label="Moduły startowe" icon="🪽" />
+                <StatCard value="24/7" label="Dostępność" icon="☀️" />
+                <StatCard value="∞" label="Możliwości rozwoju" icon="🌤️" />
               </div>
+
               <div
                 style={{
-                  color: "rgba(248,250,252,0.72)",
-                  lineHeight: 1.55,
+                  marginTop: 16,
+                  borderRadius: 18,
+                  padding: 16,
+                  background:
+                    "linear-gradient(135deg, rgba(121, 205, 255, 0.24), rgba(255,255,255,0.65))",
+                  border: "1px solid rgba(120, 201, 255, 0.48)",
                 }}
               >
-                {item.desc}
+                <div
+                  style={{
+                    fontWeight: 800,
+                    color: "#23679d",
+                    marginBottom: 6,
+                  }}
+                >
+                  Zadanie dnia
+                </div>
+                <div style={{ color: "#3b6f96", lineHeight: 1.5 }}>
+                  Zatrzymaj się na 2 minuty i nazwij jedną rzecz, która dziś
+                  najbardziej zabiera Ci energię. Potem napisz o tym do AI.
+                </div>
               </div>
             </div>
-          ))}
+          </div>
         </section>
 
         <section
+          id="modules-section"
           style={{
-            marginTop: 28,
+            marginTop: 26,
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: 16,
+          }}
+        >
+          {modules.map((mod) => {
+            const active = activeModule === mod.key;
+            return (
+              <button
+                key={mod.key}
+                onClick={() => setActiveModule(mod.key)}
+                style={{
+                  textAlign: "left",
+                  borderRadius: 26,
+                  padding: 18,
+                  cursor: "pointer",
+                  background: active
+                    ? "linear-gradient(135deg, rgba(255,255,255,0.90), rgba(209,240,255,0.96))"
+                    : "linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.38))",
+                  border: active
+                    ? "2px solid rgba(82,182,255,0.95)"
+                    : "1px solid rgba(255,255,255,0.76)",
+                  boxShadow: active
+                    ? "0 18px 36px rgba(82,182,255,0.26), inset 0 1px 0 rgba(255,255,255,0.95)"
+                    : "0 10px 24px rgba(123, 193, 255, 0.14), inset 0 1px 0 rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(8px)",
+                  transition: "all .2s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: 54,
+                    height: 54,
+                    borderRadius: 16,
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: 26,
+                    marginBottom: 14,
+                    background: mod.color,
+                    boxShadow: "0 12px 24px rgba(128, 202, 255, 0.24)",
+                  }}
+                >
+                  {mod.emoji}
+                </div>
+
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 20,
+                    color: "#1e5b8e",
+                    marginBottom: 6,
+                  }}
+                >
+                  {mod.title}
+                </div>
+
+                <div
+                  style={{
+                    color: "#4a7aa2",
+                    lineHeight: 1.5,
+                    fontSize: 14,
+                  }}
+                >
+                  {mod.desc}
+                </div>
+
+                {active && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      borderRadius: 999,
+                      background: "rgba(82,182,255,0.12)",
+                      color: "#2472ad",
+                      fontSize: 13,
+                      fontWeight: 800,
+                    }}
+                  >
+                    <span>●</span>
+                    <span>Aktywny moduł</span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </section>
+
+        <section
+          id="chat-section"
+          style={{
+            marginTop: 26,
             display: "grid",
             gridTemplateColumns: "1.15fr 0.85fr",
             gap: 22,
@@ -294,51 +517,61 @@ export default function HomePage() {
         >
           <div
             style={{
-              borderRadius: 26,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(10,14,24,0.78)",
-              backdropFilter: "blur(10px)",
+              borderRadius: 30,
+              border: "1px solid rgba(255,255,255,0.82)",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.52))",
+              boxShadow:
+                "0 24px 56px rgba(106,181,255,0.26), inset 0 1px 0 rgba(255,255,255,0.96)",
+              backdropFilter: "blur(14px)",
               padding: 18,
-              minHeight: 680,
+              minHeight: 720,
               display: "flex",
               flexDirection: "column",
-              boxShadow: "0 18px 50px rgba(0,0,0,0.26)",
             }}
           >
             <div
               style={{
-                marginBottom: 12,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 12,
                 flexWrap: "wrap",
+                marginBottom: 14,
               }}
             >
               <div>
-                <div style={{ fontSize: 24, fontWeight: 700 }}>
+                <div
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 900,
+                    color: "#215f93",
+                  }}
+                >
                   Centrum rozmowy
                 </div>
                 <div
                   style={{
+                    color: "#5180a7",
                     marginTop: 6,
-                    color: "rgba(248,250,252,0.65)",
                     fontSize: 14,
                   }}
                 >
-                  Jedno AI dla użytkownika. Trójca działa w tle.
+                  Jedno AI. Trzy ukryte silniki. Jedna klarowna odpowiedź.
                 </div>
               </div>
 
               <div
                 style={{
-                  padding: "8px 12px",
+                  padding: "9px 14px",
                   borderRadius: 999,
-                  background: "rgba(34,197,94,0.12)",
-                  border: "1px solid rgba(34,197,94,0.22)",
-                  color: "#86efac",
-                  fontSize: 13,
-                  fontWeight: 700,
+                  background: loading
+                    ? "linear-gradient(135deg, rgba(119,205,255,0.34), rgba(255,255,255,0.75))"
+                    : "rgba(255,255,255,0.8)",
+                  color: loading ? "#1167a3" : "#39739f",
+                  border: "1px solid rgba(113,197,255,0.65)",
+                  fontWeight: 800,
+                  boxShadow: "0 8px 24px rgba(132, 205, 255, 0.16)",
                 }}
               >
                 {loading ? "AI pracuje..." : "Gotowe"}
@@ -356,7 +589,7 @@ export default function HomePage() {
             >
               <button
                 onClick={() => setActiveModule("general")}
-                style={pillStyle(activeModule === "general")}
+                style={heavenPill(activeModule === "general")}
               >
                 ✨ Ogólne
               </button>
@@ -365,7 +598,7 @@ export default function HomePage() {
                 <button
                   key={mod.key}
                   onClick={() => setActiveModule(mod.key)}
-                  style={pillStyle(activeModule === mod.key)}
+                  style={heavenPill(activeModule === mod.key)}
                 >
                   {mod.emoji} {mod.title}
                 </button>
@@ -386,13 +619,14 @@ export default function HomePage() {
                   onClick={() => sendMessage(prompt)}
                   disabled={loading}
                   style={{
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: "rgba(255,255,255,0.03)",
-                    color: "#e2e8f0",
+                    border: "1px solid rgba(130, 207, 255, 0.62)",
+                    background: "rgba(255,255,255,0.72)",
+                    color: "#2f6996",
                     borderRadius: 999,
                     padding: "10px 14px",
                     cursor: loading ? "not-allowed" : "pointer",
                     fontSize: 13,
+                    boxShadow: "0 8px 20px rgba(138, 207, 255, 0.12)",
                   }}
                 >
                   {prompt}
@@ -404,10 +638,12 @@ export default function HomePage() {
               style={{
                 flex: 1,
                 overflowY: "auto",
-                borderRadius: 20,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.03)",
-                padding: 14,
+                borderRadius: 24,
+                border: "1px solid rgba(255,255,255,0.84)",
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.76), rgba(235,248,255,0.52))",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.98)",
+                padding: 16,
               }}
             >
               {messages.map((msg, index) => (
@@ -423,18 +659,23 @@ export default function HomePage() {
                   <div
                     style={{
                       maxWidth: "85%",
-                      borderRadius: 18,
-                      padding: "13px 14px",
-                      lineHeight: 1.55,
+                      borderRadius: 22,
+                      padding: "14px 16px",
+                      lineHeight: 1.65,
                       whiteSpace: "pre-wrap",
                       background:
                         msg.role === "user"
-                          ? "linear-gradient(135deg, #2563eb, #4f46e5)"
-                          : "rgba(255,255,255,0.05)",
+                          ? "linear-gradient(135deg, #5bc0ff, #9fe2ff)"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.95), rgba(226,245,255,0.92))",
                       border:
                         msg.role === "user"
-                          ? "1px solid rgba(96,165,250,0.45)"
-                          : "1px solid rgba(255,255,255,0.08)",
+                          ? "1px solid rgba(91,192,255,0.95)"
+                          : "1px solid rgba(154, 221, 255, 0.78)",
+                      color: msg.role === "user" ? "#083b65" : "#2c618d",
+                      boxShadow:
+                        msg.role === "user"
+                          ? "0 12px 30px rgba(86, 193, 255, 0.22)"
+                          : "0 10px 26px rgba(159, 214, 255, 0.14)",
                     }}
                   >
                     <div
@@ -442,8 +683,9 @@ export default function HomePage() {
                         fontSize: 11,
                         textTransform: "uppercase",
                         letterSpacing: "0.08em",
-                        opacity: 0.7,
-                        marginBottom: 7,
+                        opacity: 0.72,
+                        marginBottom: 8,
+                        fontWeight: 700,
                       }}
                     >
                       {msg.role === "user" ? "Ty" : "AI"}
@@ -464,13 +706,15 @@ export default function HomePage() {
                 style={{
                   width: "100%",
                   resize: "vertical",
-                  borderRadius: 18,
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: "rgba(255,255,255,0.04)",
-                  color: "#f8fafc",
-                  padding: 14,
+                  borderRadius: 22,
+                  border: "1px solid rgba(140, 214, 255, 0.68)",
+                  background: "rgba(255,255,255,0.85)",
+                  color: "#1f5d90",
+                  padding: 15,
                   outline: "none",
                   fontSize: 15,
+                  boxShadow:
+                    "0 12px 28px rgba(146, 213, 255, 0.18), inset 0 1px 0 rgba(255,255,255,0.95)",
                 }}
               />
 
@@ -486,12 +730,12 @@ export default function HomePage() {
               >
                 <div
                   style={{
-                    color: "rgba(248,250,252,0.56)",
-                    fontSize: 13,
+                    color: "#5182a8",
+                    fontSize: 14,
                   }}
                 >
                   Aktywny moduł:{" "}
-                  <strong style={{ color: "#cbd5e1" }}>{activeModule}</strong>
+                  <strong style={{ color: "#1d659b" }}>{activeModule}</strong>
                 </div>
 
                 <button
@@ -499,14 +743,15 @@ export default function HomePage() {
                   disabled={loading}
                   style={{
                     border: "none",
-                    borderRadius: 14,
-                    padding: "12px 18px",
-                    fontWeight: 800,
+                    borderRadius: 999,
+                    padding: "13px 20px",
+                    fontWeight: 900,
                     cursor: loading ? "not-allowed" : "pointer",
-                    color: "#08111f",
+                    color: "#063b67",
                     background: loading
-                      ? "#64748b"
-                      : "linear-gradient(135deg, #22c55e, #14b8a6)",
+                      ? "linear-gradient(135deg, #cfeeff, #eef9ff)"
+                      : "linear-gradient(135deg, #5dc4ff, #9fe2ff)",
+                    boxShadow: "0 14px 32px rgba(84, 194, 255, 0.32)",
                   }}
                 >
                   {loading ? "Myślę..." : "Wyślij"}
@@ -522,35 +767,38 @@ export default function HomePage() {
               alignContent: "start",
             }}
           >
-            <InfoCard
-              title="Moduły"
-              text="Relacje, emocje, quiz i zadanie dnia. Każdy moduł ustawia kontekst odpowiedzi bez rozwalania jednego spójnego AI."
-            />
-            <InfoCard
+            <HeavenCard
               title="Jak to działa"
-              text="W tle równolegle pracują trzy role: rozumienie problemu, plan działania i kontrola jakości. Użytkownik widzi tylko finalny głos."
+              icon="☀️"
+              text="Pod maską działają trzy szybkie role: zrozumienie problemu, plan działania i kontrola jakości. Użytkownik widzi tylko jedno, spójne AI."
             />
-            <InfoCard
-              title="Po co to jest"
-              text="Nie tylko odpowiadać, ale porządkować chaos, dawać kierunek i zamieniać rozmowę w użyteczne działanie."
+
+            <HeavenCard
+              title="Dla kogo"
+              icon="🪽"
+              text="Dla osób, które chcą zrozumieć relacje, uporządkować emocje, zrobić szybki quiz albo dostać następny krok, gdy brakuje jasności."
             />
 
             <div
               style={{
-                borderRadius: 22,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
+                borderRadius: 28,
                 padding: 18,
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,255,255,0.50))",
+                border: "1px solid rgba(255,255,255,0.8)",
+                boxShadow:
+                  "0 18px 44px rgba(113, 187, 255, 0.22), inset 0 1px 0 rgba(255,255,255,0.96)",
               }}
             >
               <div
                 style={{
-                  fontSize: 18,
-                  fontWeight: 700,
+                  fontSize: 20,
+                  fontWeight: 900,
+                  color: "#216397",
                   marginBottom: 12,
                 }}
               >
-                Szybkie starty
+                Szybkie wejścia
               </div>
 
               <div style={{ display: "grid", gap: 10 }}>
@@ -567,17 +815,53 @@ export default function HomePage() {
                     disabled={loading}
                     style={{
                       textAlign: "left",
-                      borderRadius: 14,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      background: "rgba(255,255,255,0.03)",
-                      color: "#f8fafc",
-                      padding: "12px 14px",
+                      borderRadius: 16,
+                      border: "1px solid rgba(148, 218, 255, 0.72)",
+                      background:
+                        "linear-gradient(135deg, rgba(255,255,255,0.96), rgba(220,243,255,0.88))",
+                      color: "#2f6997",
+                      padding: "13px 14px",
                       cursor: loading ? "not-allowed" : "pointer",
+                      boxShadow: "0 10px 24px rgba(142, 210, 255, 0.12)",
+                      fontWeight: 600,
                     }}
                   >
                     {item}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div
+              style={{
+                borderRadius: 28,
+                padding: 18,
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,255,255,0.50))",
+                border: "1px solid rgba(255,255,255,0.8)",
+                boxShadow:
+                  "0 18px 44px rgba(113, 187, 255, 0.22), inset 0 1px 0 rgba(255,255,255,0.96)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 20,
+                  fontWeight: 900,
+                  color: "#216397",
+                  marginBottom: 12,
+                }}
+              >
+                Światło • Energia • Forma
+              </div>
+              <div
+                style={{
+                  color: "#42759f",
+                  lineHeight: 1.65,
+                }}
+              >
+                Produkt ma nie tylko odpowiadać, ale pomagać odzyskać
+                kierunek, spokój i ruch. To nie jest zwykły chatbot — to
+                przestrzeń do zrozumienia siebie i działania.
               </div>
             </div>
           </div>
@@ -587,29 +871,97 @@ export default function HomePage() {
   );
 }
 
-function InfoCard({ title, text }: { title: string; text: string }) {
+function StatCard({
+  value,
+  label,
+  icon,
+}: {
+  value: string;
+  label: string;
+  icon: string;
+}) {
   return (
     <div
       style={{
-        borderRadius: 22,
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.04)",
-        padding: 18,
+        borderRadius: 20,
+        padding: 16,
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(223,243,255,0.84))",
+        border: "1px solid rgba(146, 219, 255, 0.62)",
+        boxShadow: "0 10px 24px rgba(135, 206, 255, 0.14)",
       }}
     >
       <div
         style={{
-          fontSize: 18,
-          fontWeight: 700,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          color: "#3f7aa4",
           marginBottom: 8,
+          fontWeight: 700,
         }}
       >
-        {title}
+        <span>{icon}</span>
+        <span>{label}</span>
       </div>
       <div
         style={{
-          color: "rgba(248,250,252,0.72)",
-          lineHeight: 1.6,
+          fontSize: 28,
+          fontWeight: 900,
+          color: "#1e679e",
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function HeavenCard({
+  title,
+  text,
+  icon,
+}: {
+  title: string;
+  text: string;
+  icon: string;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 28,
+        padding: 18,
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,255,255,0.50))",
+        border: "1px solid rgba(255,255,255,0.8)",
+        boxShadow:
+          "0 18px 44px rgba(113, 187, 255, 0.22), inset 0 1px 0 rgba(255,255,255,0.96)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 10,
+        }}
+      >
+        <span style={{ fontSize: 20 }}>{icon}</span>
+        <div
+          style={{
+            fontSize: 20,
+            fontWeight: 900,
+            color: "#216397",
+          }}
+        >
+          {title}
+        </div>
+      </div>
+
+      <div
+        style={{
+          color: "#42759f",
+          lineHeight: 1.65,
         }}
       >
         {text}
@@ -618,20 +970,23 @@ function InfoCard({ title, text }: { title: string; text: string }) {
   );
 }
 
-function pillStyle(active: boolean): React.CSSProperties {
+function heavenPill(active: boolean): React.CSSProperties {
   return {
     border: active
-      ? "1px solid rgba(96,165,250,0.45)"
-      : "1px solid rgba(255,255,255,0.10)",
+      ? "2px solid rgba(74,178,255,0.98)"
+      : "1px solid rgba(154, 222, 255, 0.76)",
     background: active
-      ? "rgba(59,130,246,0.16)"
-      : "rgba(255,255,255,0.03)",
-    color: "#f8fafc",
+      ? "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(212,241,255,0.95))"
+      : "rgba(255,255,255,0.72)",
+    color: "#276b9c",
     borderRadius: 999,
     padding: "10px 14px",
     cursor: "pointer",
     whiteSpace: "nowrap",
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: 800,
+    boxShadow: active
+      ? "0 10px 24px rgba(110, 200, 255, 0.22)"
+      : "0 8px 18px rgba(142, 208, 255, 0.12)",
   };
 }
