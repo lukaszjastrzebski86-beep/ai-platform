@@ -283,10 +283,10 @@ export default function HomePage() {
 
   const [zodiac, setZodiac] = useState("Waga");
 
-  const [tarotCard, setTarotCard] = useState<(typeof tarotDeck)[number] | null>(
-    null
-  );
-  const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[]>([]);
+const [tarotCard, setTarotCard] = useState<(typeof tarotDeck)[number] | null>(
+  null
+);
+const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([]);
 
   const [birthDate, setBirthDate] = useState("");
   const lifePath = calcLifePath(birthDate);
