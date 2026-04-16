@@ -4,6 +4,12 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+type WorkflowStep = {
+  name: string;
+  status: "done" | "failed" | "skipped";
+  details: string;
+};
+
 function extractMessage(body: any): string {
   if (typeof body?.message === "string" && body.message.trim()) {
     return body.message.trim();
@@ -41,112 +47,247 @@ async function runAgent(systemPrompt: string, userPrompt: string) {
   return res.choices[0]?.message?.content?.trim() || "";
 }
 
-async function intentAgent(message: string) {
+async function diagnosisAgent(message: string) {
   return runAgent(
     `Jesteś agentem diagnozy.
 Twoje zadanie:
-1. Rozpoznaj, czego użytkownik naprawdę chce.
-2. Uporządkuj jego intencję.
-3. Wskaż, czy potrzebuje:
-- informacji,
-- planu działania,
-- decyzji,
-- analizy problemu,
-- wsparcia emocjonalnego,
-- kreatywnego pomysłu.
+1. Rozpoznaj prawdziwą intencję użytkownika.
+2. Ustal czego potrzebuje.
+3. Oceń ton wypowiedzi.
+4. Wskaż, czy problem jest jasny czy niejasny.
 
-Odpowiedz po polsku, krótko i konkretnie.
+Odpowiedz po polsku.
 Format:
 INTENCJA: ...
 POTRZEBA: ...
-TON: ...`,
+TON: ...
+JASNOŚĆ: jasne / częściowo jasne / niejasne
+RYZYKO_BŁĘDNEJ_INTERPRETACJI: niskie / średnie / wysokie`,
     message
   );
 }
 
-async function expertAgent(message: string, intentAnalysis: string) {
+async function planningAgent(message: string, diagnosis: string) {
   return runAgent(
-    `Jesteś głównym agentem eksperckim.
-Masz dawać trafne, praktyczne, konkretne odpowiedzi po polsku.
-Nie lej wody.
-Jeśli pytanie jest niejasne, zrób najbardziej rozsądne założenie i odpowiedz użytecznie.
-Uwzględnij analizę intencji od innego agenta.`,
+    `Jesteś agentem planowania.
+Masz przygotować schemat działania zanim agent ekspercki odpowie.
+
+Zadanie:
+1. Rozbij problem na etapy.
+2. Ustal kolejność myślenia.
+3. Wskaż, co trzeba sprawdzić przed finalną odpowiedzią.
+4. Podaj checklistę kontroli.
+
+Odpowiedź po polsku.
+Format:
+CEL: ...
+ETAPY:
+1. ...
+2. ...
+3. ...
+CHECKLISTA:
+- ...
+- ...
+- ...`,
     `Wiadomość użytkownika:
 ${message}
 
-Analiza intencji:
-${intentAnalysis}
-
-Przygotuj najlepszą merytoryczną odpowiedź dla użytkownika.`
+Diagnoza:
+${diagnosis}`
   );
 }
 
-async function criticAgent(message: string, draftAnswer: string) {
+async function expertAgent(
+  message: string,
+  diagnosis: string,
+  plan: string
+) {
   return runAgent(
-    `Jesteś agentem kontroli jakości.
-Sprawdzasz odpowiedź innego agenta.
+    `Jesteś agentem eksperckim.
+Masz stworzyć najlepszą możliwą odpowiedź dla użytkownika po polsku.
 
-Masz ocenić:
-1. Czy odpowiedź naprawdę odpowiada na pytanie użytkownika.
-2. Czy jest logiczna.
-3. Czy jest konkretna.
-4. Czy nie brzmi zbyt ogólnie.
+Zasady:
+- praktycznie
+- konkretnie
+- bez lania wody
+- bez chaosu
+- jeśli coś jest niejasne, zrób rozsądne założenie, ale nie odlatuj
 
-Jeśli odpowiedź jest dobra, napisz:
-WERDYKT: OK
-UWAGI: brak
-
-Jeśli słaba, napisz:
-WERDYKT: POPRAW
-UWAGI: ...`,
-    `Pytanie użytkownika:
+Masz korzystać z diagnozy i planu przygotowanego przez inne agenty.`,
+    `Wiadomość użytkownika:
 ${message}
 
-Odpowiedź do oceny:
+Diagnoza:
+${diagnosis}
+
+Plan:
+${plan}
+
+Przygotuj roboczą odpowiedź ekspercką.`
+  );
+}
+
+async function criticAgent(
+  message: string,
+  diagnosis: string,
+  plan: string,
+  draftAnswer: string
+) {
+  return runAgent(
+    `Jesteś agentem kontroli jakości.
+Masz ocenić odpowiedź ekspercką.
+
+Sprawdź:
+1. Czy odpowiada na realną intencję użytkownika.
+2. Czy jest zgodna z planem.
+3. Czy jest konkretna.
+4. Czy nie pomija ważnych elementów.
+5. Czy nie brzmi zbyt ogólnie.
+
+Jeśli jest dobrze, napisz dokładnie:
+WERDYKT: OK
+PROBLEM: brak
+POPRAWKI: brak
+
+Jeśli nie jest dobrze, napisz dokładnie:
+WERDYKT: POPRAW
+PROBLEM: ...
+POPRAWKI: ...`,
+    `Wiadomość użytkownika:
+${message}
+
+Diagnoza:
+${diagnosis}
+
+Plan:
+${plan}
+
+Odpowiedź ekspercka:
 ${draftAnswer}`
   );
 }
 
 async function supervisorAgent(params: {
   message: string;
-  intent: string;
+  diagnosis: string;
+  plan: string;
   expertDraft: string;
   criticReview: string;
+  workflowSummary: string;
 }) {
-  const { message, intent, expertDraft, criticReview } = params;
+  const {
+    message,
+    diagnosis,
+    plan,
+    expertDraft,
+    criticReview,
+    workflowSummary,
+  } = params;
 
   return runAgent(
-    `Jesteś supervisorem wieloagentowego systemu AI.
-Twoje zadanie:
-- zebrać wyniki agentów,
-- dopilnować spójności,
-- dać użytkownikowi jedną finalną odpowiedź po polsku.
+    `Jesteś supervisorem systemu wieloagentowego.
+Pilnujesz procesu i wydajesz finalną odpowiedź tylko wtedy, gdy etapy są logiczne i spójne.
 
-Zasady:
-- odpowiedź ma być praktyczna i konkretna,
-- bez pokazywania technicznego bałaganu,
-- ale na końcu dodaj krótką sekcję:
-"Jak pracowały agenty:"
-i tam w 3 krótkich punktach opisz:
-1. co wykrył agent intencji,
-2. co zrobił agent ekspercki,
-3. co sprawdził agent kontroli.
+Twoje zadania:
+1. Zbierz wyniki agentów.
+2. Sprawdź zgodność procesu.
+3. Jeśli agent kontroli zgłasza problem, popraw odpowiedź przed oddaniem.
+4. Zwróć jedną finalną odpowiedź po polsku.
+5. Na końcu dodaj sekcję:
+"Jak pracował system:"
+i w 4 krótkich punktach opisz:
+- diagnozę,
+- plan,
+- odpowiedź ekspercką,
+- kontrolę jakości.
 
-Jeśli agent kontroli zgłasza problem, popraw odpowiedź przed oddaniem użytkownikowi.`,
+Nie pokazuj technicznego chaosu. Ma być czytelnie.`,
     `Wiadomość użytkownika:
 ${message}
 
-Wynik agenta intencji:
-${intent}
+Diagnoza:
+${diagnosis}
 
-Wersja robocza agenta eksperckiego:
+Plan:
+${plan}
+
+Odpowiedź ekspercka:
 ${expertDraft}
 
-Ocena agenta kontroli:
+Kontrola jakości:
 ${criticReview}
+
+Podsumowanie checklisty:
+${workflowSummary}
 
 Przygotuj finalną odpowiedź dla użytkownika.`
   );
+}
+
+function buildWorkflow(params: {
+  diagnosis: string;
+  plan: string;
+  expertDraft: string;
+  criticReview: string;
+}): WorkflowStep[] {
+  const { diagnosis, plan, expertDraft, criticReview } = params;
+
+  const workflow: WorkflowStep[] = [];
+
+  workflow.push({
+    name: "Diagnoza intencji użytkownika",
+    status: diagnosis ? "done" : "failed",
+    details: diagnosis
+      ? "Agent diagnozy określił intencję, potrzebę i poziom jasności problemu."
+      : "Brak wyniku diagnozy.",
+  });
+
+  workflow.push({
+    name: "Ułożenie planu działania",
+    status: plan ? "done" : "failed",
+    details: plan
+      ? "Agent planowania przygotował etapy i checklistę kontroli."
+      : "Brak planu działania.",
+  });
+
+  workflow.push({
+    name: "Przygotowanie odpowiedzi eksperckiej",
+    status: expertDraft ? "done" : "failed",
+    details: expertDraft
+      ? "Agent ekspercki przygotował roboczą odpowiedź."
+      : "Brak odpowiedzi eksperckiej.",
+  });
+
+  const criticOk = criticReview.includes("WERDYKT: OK");
+  const criticImprove = criticReview.includes("WERDYKT: POPRAW");
+
+  workflow.push({
+    name: "Kontrola jakości odpowiedzi",
+    status: criticOk ? "done" : criticImprove ? "failed" : "failed",
+    details: criticOk
+      ? "Agent kontroli zatwierdził odpowiedź."
+      : criticImprove
+      ? "Agent kontroli wykrył problem i wymusił korektę przez supervisora."
+      : "Nie udało się ustalić poprawnego werdyktu kontroli.",
+  });
+
+  workflow.push({
+    name: "Decyzja supervisora",
+    status: "done",
+    details:
+      "Supervisor zebrał wyniki agentów, sprawdził spójność procesu i przygotował finalną odpowiedź.",
+  });
+
+  return workflow;
+}
+
+function workflowToText(workflow: WorkflowStep[]) {
+  return workflow
+    .map(
+      (step, index) =>
+        `${index + 1}. ${step.name} | status: ${step.status} | ${step.details}`
+    )
+    .join("\n");
 }
 
 export async function POST(req: Request) {
@@ -166,24 +307,45 @@ export async function POST(req: Request) {
       );
     }
 
-    const intent = await intentAgent(message);
-    const expertDraft = await expertAgent(message, intent);
-    const criticReview = await criticAgent(message, expertDraft);
-    const finalReply = await supervisorAgent({
+    const diagnosis = await diagnosisAgent(message);
+    const plan = await planningAgent(message, diagnosis);
+    const expertDraft = await expertAgent(message, diagnosis, plan);
+    const criticReview = await criticAgent(
       message,
-      intent,
+      diagnosis,
+      plan,
+      expertDraft
+    );
+
+    const workflow = buildWorkflow({
+      diagnosis,
+      plan,
       expertDraft,
       criticReview,
     });
 
+    const workflowSummary = workflowToText(workflow);
+
+    const finalReply = await supervisorAgent({
+      message,
+      diagnosis,
+      plan,
+      expertDraft,
+      criticReview,
+      workflowSummary,
+    });
+
     return Response.json({
       reply: finalReply,
+      workflow,
       agents: {
-        intent,
+        diagnosis,
+        planner: plan,
         expert: expertDraft,
         critic: criticReview,
+        supervisor: "Supervisor wykonał końcową syntezę i kontrolę procesu.",
       },
-      meta: "MULTI_AGENT_OK",
+      meta: "SUPERVISOR_WORKFLOW_OK",
     });
   } catch (err: any) {
     return Response.json(
