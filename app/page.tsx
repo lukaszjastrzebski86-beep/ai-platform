@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ModuleType =
   | "general"
@@ -118,14 +118,185 @@ const quickPrompts: Record<ModuleType, string[]> = {
   ],
 };
 
+const zodiacSigns = [
+  "Baran",
+  "Byk",
+  "Bliźnięta",
+  "Rak",
+  "Lew",
+  "Panna",
+  "Waga",
+  "Skorpion",
+  "Strzelec",
+  "Koziorożec",
+  "Wodnik",
+  "Ryby",
+];
+
+const horoscopeMap: Record<string, string> = {
+  Baran:
+    "Dziś energia pcha Cię do działania. Uważaj tylko, żeby nie pomylić impulsu z prawdziwym kierunkiem.",
+  Byk:
+    "To dobry dzień na porządkowanie spraw, które od dawna wiszą nad Tobą. Stabilność da Ci siłę.",
+  "Bliźnięta":
+    "Pojawi się więcej myśli niż zwykle. Kluczem będzie wybranie jednej rzeczy, która naprawdę ma znaczenie.",
+  Rak:
+    "Emocje mogą dziś mocniej dochodzić do głosu. To dobry moment, by dać sobie więcej czułości i jasności.",
+  Lew:
+    "Masz dziś potencjał przyciągania uwagi i energii. Najwięcej zyskasz, gdy połączysz odwagę z autentycznością.",
+  Panna:
+    "Dzień sprzyja analizie, ale nie przesadź z kontrolą. Czasem prosty ruch daje więcej niż idealny plan.",
+  Waga:
+    "Relacje i balans będą dziś ważne. Zobacz, gdzie za dużo dopasowujesz się kosztem siebie.",
+  Skorpion:
+    "Dziś łatwiej wyczuć ukryte napięcia. Użyj tej głębi do prawdy, a nie do nakręcania się.",
+  Strzelec:
+    "Masz dziś potrzebę ruchu i sensu. Dobrze zrobi Ci coś, co da kierunek, a nie tylko rozproszenie.",
+  Koziorożec:
+    "To dobry dzień na konkrety, ale nie zapomnij o własnej energii. Dyscyplina działa najlepiej, gdy nie jest przemocą.",
+  Wodnik:
+    "Pojawi się potrzeba świeżości i spojrzenia z innej strony. Dziś nietypowe myślenie może dać najlepszy efekt.",
+  Ryby:
+    "Intuicja jest dziś mocna. Jeśli coś Cię ciągnie albo odpycha, zatrzymaj się i sprawdź, co naprawdę czujesz.",
+};
+
+const tarotDeck = [
+  {
+    name: "Głupiec",
+    meaning:
+      "Nowy początek, odwaga wejścia w nieznane, świeżość i ruch.",
+  },
+  {
+    name: "Mag",
+    meaning:
+      "Sprawczość, kierowanie energią, używanie swoich zasobów świadomie.",
+  },
+  {
+    name: "Kapłanka",
+    meaning:
+      "Intuicja, cisza, wewnętrzna prawda i to, co jeszcze nie zostało wypowiedziane.",
+  },
+  {
+    name: "Cesarzowa",
+    meaning:
+      "Obfitość, opieka, wzrost, przyjmowanie życia i jego rytmu.",
+  },
+  {
+    name: "Cesarz",
+    meaning:
+      "Struktura, granice, decyzja i odzyskanie kontroli tam, gdzie jej brakuje.",
+  },
+  {
+    name: "Kochankowie",
+    meaning:
+      "Relacja, wybór serca, zgodność albo napięcie między wartościami.",
+  },
+  {
+    name: "Rydwan",
+    meaning:
+      "Ruch do przodu, siła woli, wybór kierunku i przekuwanie chaosu w działanie.",
+  },
+  {
+    name: "Sprawiedliwość",
+    meaning:
+      "Prawda, równowaga, konsekwencja i zobaczenie rzeczy takimi, jakie są.",
+  },
+  {
+    name: "Pustelnik",
+    meaning:
+      "Potrzeba zatrzymania, refleksji i własnego światła zamiast hałasu.",
+  },
+  {
+    name: "Koło Fortuny",
+    meaning:
+      "Zwrot, zmiana cyklu, nowy etap i nieoczekiwane przesunięcia.",
+  },
+  {
+    name: "Siła",
+    meaning:
+      "Spokojna moc, cierpliwość, regulacja energii i wewnętrzna odwaga.",
+  },
+  {
+    name: "Słońce",
+    meaning:
+      "Jasność, ulga, prawda, wzrost i dobry moment na działanie.",
+  },
+];
+
+const wheelRewards = [
+  { label: "+10 diamentów", diamonds: 10, light: 0, energy: 0 },
+  { label: "+20 światła", diamonds: 0, light: 20, energy: 0 },
+  { label: "+8 energii", diamonds: 0, light: 0, energy: 8 },
+  { label: "+5 diamentów i +5 światła", diamonds: 5, light: 5, energy: 0 },
+  { label: "+12 światła i +4 energii", diamonds: 0, light: 12, energy: 4 },
+  { label: "Super bonus +15 diamentów", diamonds: 15, light: 0, energy: 0 },
+];
+
 function id() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function calcLifePath(dateStr: string) {
+  if (!dateStr) return null;
+  const digits = dateStr.replaceAll("-", "").split("").map(Number);
+  let sum = digits.reduce((a, b) => a + b, 0);
+
+  while (sum > 9 && sum !== 11 && sum !== 22 && sum !== 33) {
+    sum = String(sum)
+      .split("")
+      .map(Number)
+      .reduce((a, b) => a + b, 0);
+  }
+
+  return sum;
+}
+
+function lifePathMeaning(value: number | null) {
+  if (value === null) return "";
+  const map: Record<number, string> = {
+    1: "Liczba 1: niezależność, inicjatywa, potrzeba działania i własnej ścieżki.",
+    2: "Liczba 2: relacje, współpraca, czułość, wyczucie energii innych.",
+    3: "Liczba 3: ekspresja, kreatywność, komunikacja i lekkość.",
+    4: "Liczba 4: struktura, dyscyplina, budowanie stabilności.",
+    5: "Liczba 5: zmiana, ruch, wolność, doświadczenie.",
+    6: "Liczba 6: troska, odpowiedzialność, bliskość i harmonia.",
+    7: "Liczba 7: refleksja, głębia, intuicja i analiza.",
+    8: "Liczba 8: moc, wpływ, sprawczość, materia i wynik.",
+    9: "Liczba 9: empatia, domykanie cykli, sens i większa perspektywa.",
+    11: "Liczba 11: silna intuicja, inspiracja, duchowe napięcie i wrażliwość.",
+    22: "Liczba 22: wielka budowa, wizja połączona z wykonaniem.",
+    33: "Liczba 33: energia przewodnika, wsparcia i świadomej obecności.",
+  };
+  return map[value] || "To liczba o niestandardowej energii.";
 }
 
 export default function HomePage() {
   const [activeModule, setActiveModule] = useState<ModuleType>("general");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [diamonds, setDiamonds] = useState(120);
+  const [light, setLight] = useState(240);
+  const [energy, setEnergy] = useState(84);
+  const [streak, setStreak] = useState(7);
+  const [dailyClaimed, setDailyClaimed] = useState(false);
+
+  const [zodiac, setZodiac] = useState("Waga");
+
+  const [tarotCard, setTarotCard] = useState<(typeof tarotDeck)[number] | null>(
+    null
+  );
+  const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[]>([]);
+
+  const [birthDate, setBirthDate] = useState("");
+  const lifePath = calcLifePath(birthDate);
+
+  const [wheelResult, setWheelResult] = useState("");
+  const [wheelSpinning, setWheelSpinning] = useState(false);
+
+  const [gameRunning, setGameRunning] = useState(false);
+  const [gameTime, setGameTime] = useState(20);
+  const [gameScore, setGameScore] = useState(0);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -141,6 +312,71 @@ export default function HomePage() {
     () => quickPrompts[activeModule] || quickPrompts.general,
     [activeModule]
   );
+
+  useEffect(() => {
+    if (!gameRunning) return;
+
+    if (gameTime <= 0) {
+      setGameRunning(false);
+      setDiamonds((d) => d + gameScore);
+      setLight((l) => l + Math.floor(gameScore / 2));
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setGameTime((t) => t - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [gameRunning, gameTime, gameScore]);
+
+  function claimDailyReward() {
+    if (dailyClaimed) return;
+    setDiamonds((d) => d + 25);
+    setLight((l) => l + 18);
+    setEnergy((e) => Math.min(100, e + 10));
+    setStreak((s) => s + 1);
+    setDailyClaimed(true);
+  }
+
+  function drawTarotCard() {
+    const random = tarotDeck[Math.floor(Math.random() * tarotDeck.length)];
+    setTarotCard(random);
+    setLight((l) => l + 3);
+  }
+
+  function drawTarotSpread() {
+    const shuffled = [...tarotDeck].sort(() => Math.random() - 0.5).slice(0, 3);
+    setTarotSpread(shuffled);
+    setLight((l) => l + 5);
+  }
+
+  function spinWheel() {
+    if (wheelSpinning) return;
+    setWheelSpinning(true);
+    setWheelResult("");
+
+    setTimeout(() => {
+      const reward =
+        wheelRewards[Math.floor(Math.random() * wheelRewards.length)];
+      setDiamonds((d) => d + reward.diamonds);
+      setLight((l) => l + reward.light);
+      setEnergy((e) => Math.min(100, e + reward.energy));
+      setWheelResult(reward.label);
+      setWheelSpinning(false);
+    }, 1400);
+  }
+
+  function startLightGame() {
+    setGameRunning(true);
+    setGameTime(20);
+    setGameScore(0);
+  }
+
+  function collectLight() {
+    if (!gameRunning) return;
+    setGameScore((s) => s + 1);
+  }
 
   async function sendMessage(customText?: string) {
     const content = (customText ?? input).trim();
@@ -187,24 +423,30 @@ export default function HomePage() {
       }
 
       if (data.type === "quiz" && data.quiz) {
-        const quizMessage: QuizMessage = {
-          id: id(),
-          kind: "quiz",
-          role: "assistant",
-          quiz: data.quiz,
-        };
-        setMessages((prev) => [...prev, quizMessage]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: id(),
+            kind: "quiz",
+            role: "assistant",
+            quiz: data.quiz,
+          },
+        ]);
+        setLight((l) => l + 8);
         return;
       }
 
       if (data.type === "task" && data.task) {
-        const taskMessage: TaskMessage = {
-          id: id(),
-          kind: "task",
-          role: "assistant",
-          task: data.task,
-        };
-        setMessages((prev) => [...prev, taskMessage]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: id(),
+            kind: "task",
+            role: "assistant",
+            task: data.task,
+          },
+        ]);
+        setLight((l) => l + 6);
         return;
       }
 
@@ -217,6 +459,7 @@ export default function HomePage() {
           content: data.reply || "Brak odpowiedzi",
         },
       ]);
+      setLight((l) => l + 4);
     } catch (error: any) {
       setMessages((prev) => [
         ...prev,
@@ -269,9 +512,8 @@ export default function HomePage() {
             </h1>
 
             <p className="hero-text">
-              Piękna przestrzeń do relacji, emocji, decyzji, quizów i zadań.
-              Zamiast zwykłego czatu — interfejs, który prowadzi Cię ku
-              jasności, spokojowi i działaniu.
+              Relacje, emocje, quizy, zadania, tarot, horoskop, numerologia,
+              diamenty i grywalizacja — wszystko w jednym, pięknym interfejsie.
             </p>
 
             <div className="hero-actions">
@@ -288,11 +530,11 @@ export default function HomePage() {
               <button
                 className="secondary-btn"
                 onClick={() => {
-                  const el = document.getElementById("modules-section");
+                  const el = document.getElementById("magic-section");
                   el?.scrollIntoView({ behavior: "smooth" });
                 }}
               >
-                Zobacz moduły
+                Magia dnia
               </button>
             </div>
           </div>
@@ -307,21 +549,28 @@ export default function HomePage() {
               </div>
 
               <div className="floating-card floating-1">
-                <div className="floating-label">Daily Light</div>
-                <div className="floating-value">+24</div>
+                <div className="floating-label">Diamenty</div>
+                <div className="floating-value">{diamonds}</div>
               </div>
 
               <div className="floating-card floating-2">
-                <div className="floating-label">Streak</div>
-                <div className="floating-value">7 dni</div>
+                <div className="floating-label">Światło</div>
+                <div className="floating-value">{light}</div>
               </div>
 
               <div className="floating-card floating-3">
-                <div className="floating-label">AI online</div>
-                <div className="floating-value">3/3</div>
+                <div className="floating-label">Energia</div>
+                <div className="floating-value">{energy}%</div>
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="top-stats-grid">
+          <RewardCard icon="💎" label="Diamenty" value={String(diamonds)} />
+          <RewardCard icon="☀️" label="Światło" value={String(light)} />
+          <RewardCard icon="⚡" label="Energia" value={`${energy}%`} />
+          <RewardCard icon="🔥" label="Streak" value={`${streak}`} />
         </section>
 
         <section id="modules-section" className="modules-grid">
@@ -336,10 +585,7 @@ export default function HomePage() {
                 <div className="module-icon">{mod.emoji}</div>
                 <div className="module-title">{mod.title}</div>
                 <div className="module-desc">{mod.desc}</div>
-
-                {active && (
-                  <div className="module-active-badge">Aktywny moduł</div>
-                )}
+                {active && <div className="module-active-badge">Aktywny moduł</div>}
               </button>
             );
           })}
@@ -410,7 +656,13 @@ export default function HomePage() {
                 if (msg.kind === "quiz") {
                   return (
                     <div key={msg.id} className="message-row assistant">
-                      <QuizCard quiz={msg.quiz} />
+                      <QuizCard
+                        quiz={msg.quiz}
+                        onReward={(d, l) => {
+                          setDiamonds((x) => x + d);
+                          setLight((x) => x + l);
+                        }}
+                      />
                     </div>
                   );
                 }
@@ -418,7 +670,14 @@ export default function HomePage() {
                 if (msg.kind === "task") {
                   return (
                     <div key={msg.id} className="message-row assistant">
-                      <TaskCard task={msg.task} />
+                      <TaskCard
+                        task={msg.task}
+                        onDone={() => {
+                          setDiamonds((x) => x + 8);
+                          setLight((x) => x + 10);
+                          setEnergy((x) => Math.min(100, x + 5));
+                        }}
+                      />
                     </div>
                   );
                 }
@@ -456,46 +715,152 @@ export default function HomePage() {
           <div className="side-panel">
             <div className="sticky-stack">
               <div className="reward-panel glass">
-                <div className="section-title small">Twój lot</div>
-
-                <div className="reward-grid">
-                  <RewardCard icon="🔥" label="Streak" value="7" />
-                  <RewardCard icon="💎" label="Światło" value="248" />
-                  <RewardCard icon="🎯" label="Cel dnia" value="1/3" />
-                  <RewardCard icon="⚡" label="Energia" value="88%" />
-                </div>
-              </div>
-
-              <div className="quick-start-card glass">
-                <div className="section-title small">Szybkie wejścia</div>
-
-                <div className="quick-start-list">
-                  {[
-                    "Mam chaos w głowie",
-                    "Chcę zrozumieć relację",
-                    "Pomóż mi nazwać moje emocje",
-                    "Daj mi krótki quiz",
-                    "Potrzebuję zadania na dziś",
-                  ].map((item) => (
-                    <button
-                      key={item}
-                      onClick={() => sendMessage(item)}
-                      disabled={loading}
-                      className="quick-start-btn"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="heaven-card glass">
-                <div className="section-title small">Jak to działa</div>
+                <div className="section-title small">Daily Reward</div>
                 <div className="section-text">
-                  Relacje i emocje dają krótszą, bardziej produktową odpowiedź.
-                  Quiz i zadanie działają już jako prawdziwe karty interakcji,
-                  a nie tylko ściana tekstu.
+                  Odbierz bonus dnia i zwiększ swój streak.
                 </div>
+                <button
+                  className="action-btn"
+                  onClick={claimDailyReward}
+                  disabled={dailyClaimed}
+                  style={{
+                    marginTop: 14,
+                    opacity: dailyClaimed ? 0.55 : 1,
+                    cursor: dailyClaimed ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {dailyClaimed ? "Odebrane ✅" : "Odbierz +25 diamentów"}
+                </button>
+              </div>
+
+              <div className="reward-panel glass">
+                <div className="section-title small">Koło fortuny</div>
+                <div className="section-text">
+                  Jedno kliknięcie, szybka nagroda, trochę losu.
+                </div>
+                <button
+                  className="action-btn"
+                  onClick={spinWheel}
+                  disabled={wheelSpinning}
+                  style={{ marginTop: 14 }}
+                >
+                  {wheelSpinning ? "Kręci się..." : "Zakręć"}
+                </button>
+                {wheelResult && <div className="result-box">{wheelResult}</div>}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="magic-section" className="magic-grid">
+          <div className="magic-card glass">
+            <div className="section-title small">Horoskop dnia</div>
+            <div className="field-row">
+              <select
+                value={zodiac}
+                onChange={(e) => setZodiac(e.target.value)}
+                className="select"
+              >
+                {zodiacSigns.map((sign) => (
+                  <option key={sign} value={sign}>
+                    {sign}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="result-box">{horoscopeMap[zodiac]}</div>
+          </div>
+
+          <div className="magic-card glass">
+            <div className="section-title small">Tarot / karta dnia</div>
+            <div className="button-row">
+              <button className="action-btn" onClick={drawTarotCard}>
+                Losuj kartę dnia
+              </button>
+              <button className="action-btn secondary" onClick={drawTarotSpread}>
+                3 karty
+              </button>
+            </div>
+
+            {tarotCard && (
+              <div className="result-box">
+                <strong>{tarotCard.name}</strong>
+                <div style={{ marginTop: 8 }}>{tarotCard.meaning}</div>
+              </div>
+            )}
+
+            {tarotSpread.length > 0 && (
+              <div className="spread-grid">
+                {tarotSpread.map((card, index) => (
+                  <div key={`${card.name}-${index}`} className="mini-panel">
+                    <div className="task-label">
+                      {index === 0
+                        ? "Przeszłość"
+                        : index === 1
+                        ? "Teraźniejszość"
+                        : "Przyszłość"}
+                    </div>
+                    <strong>{card.name}</strong>
+                    <div style={{ marginTop: 6 }}>{card.meaning}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="magic-card glass">
+            <div className="section-title small">Numerologia</div>
+            <div className="field-row">
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="date-input"
+              />
+            </div>
+
+            {lifePath !== null && (
+              <div className="result-box">
+                <strong>Twoja liczba drogi życia: {lifePath}</strong>
+                <div style={{ marginTop: 8 }}>{lifePathMeaning(lifePath)}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="magic-card glass">
+            <div className="section-title small">Mini gra: zbieranie światła</div>
+            <div className="section-text">
+              Klikaj światło przez 20 sekund. Zdobyte punkty zamienią się na diamenty.
+            </div>
+            <div className="button-row">
+              <button className="action-btn" onClick={startLightGame}>
+                Start
+              </button>
+            </div>
+
+            <div className="game-panel">
+              <div className="game-stats">
+                <div className="mini-panel">
+                  <div className="task-label">Czas</div>
+                  <strong>{gameTime}s</strong>
+                </div>
+                <div className="mini-panel">
+                  <div className="task-label">Punkty</div>
+                  <strong>{gameScore}</strong>
+                </div>
+              </div>
+
+              <button
+                className={`light-orb-btn ${gameRunning ? "live" : ""}`}
+                onClick={collectLight}
+              >
+                ✨
+              </button>
+
+              <div className="section-text" style={{ marginTop: 10 }}>
+                {gameRunning
+                  ? "Klikaj szybko, zbieraj światło."
+                  : "Kliknij Start, żeby zacząć."}
               </div>
             </div>
           </div>
@@ -587,9 +952,9 @@ export default function HomePage() {
         .container {
           position: relative;
           z-index: 1;
-          max-width: 1280px;
+          max-width: 1320px;
           margin: 0 auto;
-          padding: 24px 18px 52px;
+          padding: 24px 18px 60px;
         }
 
         .glass {
@@ -656,7 +1021,8 @@ export default function HomePage() {
           box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.18);
         }
 
-        .hero-actions {
+        .hero-actions,
+        .button-row {
           display: flex;
           gap: 14px;
           flex-wrap: wrap;
@@ -669,7 +1035,11 @@ export default function HomePage() {
         .pill,
         .quick-pill,
         .quick-start-btn,
-        .module-card {
+        .module-card,
+        .action-btn,
+        .quiz-submit,
+        .quiz-option,
+        .light-orb-btn {
           transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease,
             border-color 0.18s ease;
         }
@@ -680,27 +1050,31 @@ export default function HomePage() {
         .quick-pill:hover,
         .quick-start-btn:hover,
         .module-card:hover,
-        .pill:hover {
+        .pill:hover,
+        .action-btn:hover,
+        .quiz-submit:hover,
+        .quiz-option:hover,
+        .light-orb-btn:hover {
           transform: translateY(-1px);
         }
 
-        .primary-btn {
+        .primary-btn,
+        .action-btn,
+        .send-btn,
+        .quiz-submit {
           border: none;
           border-radius: 999px;
-          padding: 14px 22px;
+          padding: 13px 20px;
           font-weight: 900;
           cursor: pointer;
           color: #07335d;
           background: linear-gradient(135deg, #6ed4ff, #a8ecff);
-          box-shadow: 0 18px 38px rgba(82, 192, 255, 0.30);
+          box-shadow: 0 16px 34px rgba(84, 194, 255, 0.28);
         }
 
+        .action-btn.secondary,
         .secondary-btn {
-          border-radius: 999px;
-          padding: 14px 22px;
-          font-weight: 900;
-          cursor: pointer;
-          background: rgba(255, 255, 255, 0.72);
+          background: rgba(255, 255, 255, 0.78);
           border: 1px solid rgba(140, 213, 255, 0.76);
           color: #2f6795;
           box-shadow: 0 12px 28px rgba(128, 205, 255, 0.18);
@@ -805,11 +1179,24 @@ export default function HomePage() {
           color: #1e679e;
         }
 
-        .modules-grid {
+        .top-stats-grid,
+        .modules-grid,
+        .magic-grid {
           margin-top: 26px;
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 16px;
+        }
+
+        .top-stats-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .modules-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .magic-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .module-card {
@@ -880,7 +1267,8 @@ export default function HomePage() {
         .chat-panel,
         .reward-panel,
         .quick-start-card,
-        .heaven-card {
+        .heaven-card,
+        .magic-card {
           border-radius: 30px;
           padding: 18px;
         }
@@ -952,7 +1340,8 @@ export default function HomePage() {
           margin-bottom: 14px;
         }
 
-        .pill {
+        .pill,
+        .quick-pill {
           border-radius: 999px;
           padding: 10px 14px;
           font-size: 13px;
@@ -968,17 +1357,6 @@ export default function HomePage() {
         .pill.active {
           border: 2px solid rgba(89, 197, 255, 0.96);
           background: linear-gradient(135deg, #ffffff, #d6f3ff);
-          box-shadow: 0 14px 30px rgba(96, 197, 255, 0.20);
-        }
-
-        .quick-pill {
-          border-radius: 999px;
-          padding: 10px 14px;
-          border: 1px solid rgba(144, 220, 255, 0.72);
-          background: rgba(255, 255, 255, 0.75);
-          color: #2f6996;
-          cursor: pointer;
-          font-size: 13px;
         }
 
         .messages-box {
@@ -1032,17 +1410,19 @@ export default function HomePage() {
           color: #2a638e;
         }
 
-        .message-label {
+        .message-label,
+        .task-label {
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.08em;
           opacity: 0.72;
           margin-bottom: 8px;
           font-weight: 900;
+          color: #5b8ab0;
         }
 
         .card-bubble {
-          width: min(100%, 640px);
+          width: min(100%, 700px);
           border-radius: 26px;
           padding: 18px;
           background: linear-gradient(
@@ -1083,12 +1463,18 @@ export default function HomePage() {
           line-height: 1.5;
         }
 
-        .quiz-options {
+        .quiz-options,
+        .task-steps,
+        .quick-start-list,
+        .field-row {
           display: grid;
-          gap: 8px;
+          gap: 10px;
         }
 
-        .quiz-option {
+        .quiz-option,
+        .quick-start-btn,
+        .select,
+        .date-input {
           text-align: left;
           border-radius: 14px;
           border: 1px solid rgba(160, 228, 255, 0.82);
@@ -1099,63 +1485,64 @@ export default function HomePage() {
           font-weight: 600;
         }
 
+        .select,
+        .date-input {
+          cursor: initial;
+          outline: none;
+        }
+
         .quiz-option.active {
           border: 2px solid rgba(89, 197, 255, 0.96);
           background: linear-gradient(135deg, #ffffff, #d6f3ff);
         }
 
-        .quiz-result {
-          margin-top: 16px;
+        .quiz-result,
+        .result-box,
+        .mini-panel,
+        .task-box,
+        .task-step,
+        .game-panel {
           border-radius: 18px;
-          padding: 16px;
+          padding: 14px 16px;
           background: linear-gradient(135deg, #effbff, #dff4ff);
           border: 1px solid rgba(137, 217, 255, 0.86);
         }
 
-        .quiz-submit {
-          margin-top: 8px;
+        .spread-grid,
+        .game-stats,
+        .reward-grid {
+          display: grid;
+          gap: 12px;
+        }
+
+        .spread-grid {
+          grid-template-columns: repeat(3, 1fr);
+          margin-top: 14px;
+        }
+
+        .game-stats,
+        .reward-grid {
+          grid-template-columns: repeat(2, 1fr);
+          margin-top: 12px;
+        }
+
+        .light-orb-btn {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
           border: none;
-          border-radius: 999px;
-          padding: 12px 18px;
           cursor: pointer;
-          font-weight: 900;
-          color: #063a66;
-          background: linear-gradient(135deg, #64d1ff, #aceeff);
+          font-size: 40px;
+          justify-self: center;
+          background:
+            radial-gradient(circle at 40% 35%, #ffffff 0%, #eaf9ff 36%, #8ddcff 68%, #54c3ff 100%);
+          box-shadow:
+            0 0 28px rgba(255,255,255,0.9),
+            0 0 50px rgba(110,214,255,0.55);
         }
 
-        .task-meta {
-          display: grid;
-          gap: 10px;
-          margin: 14px 0;
-        }
-
-        .task-box {
-          border-radius: 16px;
-          padding: 12px 14px;
-          background: rgba(255,255,255,0.66);
-          border: 1px solid rgba(174, 231, 255, 0.76);
-        }
-
-        .task-label {
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          font-weight: 900;
-          color: #5b8ab0;
-          margin-bottom: 6px;
-        }
-
-        .task-steps {
-          display: grid;
-          gap: 10px;
-          margin-top: 8px;
-        }
-
-        .task-step {
-          border-radius: 14px;
-          padding: 12px 14px;
-          background: rgba(255,255,255,0.88);
-          border: 1px solid rgba(160, 228, 255, 0.82);
+        .light-orb-btn.live {
+          animation: pulse 1s ease-in-out infinite;
         }
 
         .input-wrap {
@@ -1195,30 +1582,6 @@ export default function HomePage() {
           color: #1d659b;
         }
 
-        .send-btn {
-          border: none;
-          border-radius: 999px;
-          padding: 13px 20px;
-          font-weight: 900;
-          cursor: pointer;
-          color: #073b67;
-          background: linear-gradient(135deg, #64d1ff, #aceeff);
-          box-shadow: 0 16px 34px rgba(84, 194, 255, 0.28);
-        }
-
-        .side-panel {
-          display: grid;
-          gap: 16px;
-          align-content: start;
-        }
-
-        .reward-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
-          margin-top: 12px;
-        }
-
         .reward-card {
           border-radius: 22px;
           padding: 16px;
@@ -1244,35 +1607,25 @@ export default function HomePage() {
           color: #1d679d;
         }
 
-        .quick-start-list {
-          display: grid;
-          gap: 10px;
-          margin-top: 12px;
-        }
-
-        .quick-start-btn {
-          text-align: left;
-          border-radius: 16px;
-          border: 1px solid rgba(156, 226, 255, 0.78);
-          background:
-            linear-gradient(135deg, rgba(255,255,255,0.96), rgba(220,243,255,0.90));
-          color: #2f6996;
-          padding: 13px 14px;
-          cursor: pointer;
-          font-weight: 700;
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
         }
 
         @media (max-width: 1100px) {
-          .hero {
+          .hero,
+          .chat-area,
+          .magic-grid {
             grid-template-columns: 1fr;
           }
 
-          .modules-grid {
+          .modules-grid,
+          .top-stats-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .chat-area {
-            grid-template-columns: 1fr;
           }
 
           .sticky-stack {
@@ -1281,12 +1634,29 @@ export default function HomePage() {
         }
 
         @media (max-width: 760px) {
-          .modules-grid {
+          .hero-left h1 {
+            font-size: 48px;
+          }
+
+          .modules-grid,
+          .top-stats-grid,
+          .magic-grid,
+          .spread-grid {
             grid-template-columns: 1fr;
           }
 
-          .hero-left h1 {
-            font-size: 48px;
+          .message-bubble,
+          .card-bubble {
+            max-width: 100%;
+            width: 100%;
+          }
+
+          .section-title {
+            font-size: 28px;
+          }
+
+          .section-title.small {
+            font-size: 22px;
           }
 
           .orb-wrap {
@@ -1308,27 +1678,19 @@ export default function HomePage() {
             width: 136px;
             height: 136px;
           }
-
-          .message-bubble,
-          .card-bubble {
-            max-width: 100%;
-            width: 100%;
-          }
-
-          .section-title {
-            font-size: 28px;
-          }
-
-          .section-title.small {
-            font-size: 22px;
-          }
         }
       `}</style>
     </main>
   );
 }
 
-function QuizCard({ quiz }: { quiz: QuizPayload }) {
+function QuizCard({
+  quiz,
+  onReward,
+}: {
+  quiz: QuizPayload;
+  onReward: (diamonds: number, light: number) => void;
+}) {
   const [answers, setAnswers] = useState<Record<string, "A" | "B" | "C">>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -1393,8 +1755,14 @@ function QuizCard({ quiz }: { quiz: QuizPayload }) {
         <button
           className="quiz-submit"
           disabled={!canSubmit}
-          onClick={() => setSubmitted(true)}
-          style={{ opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}
+          onClick={() => {
+            setSubmitted(true);
+            onReward(12, 10);
+          }}
+          style={{
+            opacity: canSubmit ? 1 : 0.5,
+            cursor: canSubmit ? "pointer" : "not-allowed",
+          }}
         >
           Pokaż wynik
         </button>
@@ -1408,7 +1776,13 @@ function QuizCard({ quiz }: { quiz: QuizPayload }) {
   );
 }
 
-function TaskCard({ task }: { task: TaskPayload }) {
+function TaskCard({
+  task,
+  onDone,
+}: {
+  task: TaskPayload;
+  onDone: () => void;
+}) {
   const [done, setDone] = useState(false);
 
   return (
@@ -1417,16 +1791,14 @@ function TaskCard({ task }: { task: TaskPayload }) {
       <div className="card-title">{task.title}</div>
       <div className="card-intro">{task.goal}</div>
 
-      <div className="task-meta">
-        <div className="task-box">
-          <div className="task-label">Czas</div>
-          <div>{task.duration}</div>
-        </div>
+      <div className="task-box" style={{ marginBottom: 10 }}>
+        <div className="task-label">Czas</div>
+        <div>{task.duration}</div>
+      </div>
 
-        <div className="task-box">
-          <div className="task-label">Wersja minimum</div>
-          <div>{task.minimumVersion}</div>
-        </div>
+      <div className="task-box" style={{ marginBottom: 14 }}>
+        <div className="task-label">Wersja minimum</div>
+        <div>{task.minimumVersion}</div>
       </div>
 
       <div className="task-label">Kroki</div>
@@ -1445,7 +1817,11 @@ function TaskCard({ task }: { task: TaskPayload }) {
 
       <button
         className="quiz-submit"
-        onClick={() => setDone((v) => !v)}
+        onClick={() => {
+          const next = !done;
+          setDone(next);
+          if (next) onDone();
+        }}
         style={{ marginTop: 14 }}
       >
         {done ? "Oznaczone jako zrobione ✅" : "Oznacz jako zrobione"}
