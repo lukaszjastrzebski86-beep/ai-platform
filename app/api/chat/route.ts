@@ -346,14 +346,16 @@ async function runAgent(
   input: string,
   maxOutputTokens = 280
 ) {
-  const res = await openai.responses.create({
-    model: "gpt-4.1-mini",
-    instructions,
-    input,
-    max_output_tokens: maxOutputTokens,
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: instructions },
+      { role: "user", content: input },
+    ],
+    max_tokens: maxOutputTokens,
   });
 
-  return (res.output_text || "").trim();
+  return completion.choices[0].message.content?.trim() || "";
 }
 
 async function runTriad(message: string, module: ModuleType) {

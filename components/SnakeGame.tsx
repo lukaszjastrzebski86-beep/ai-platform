@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useApp } from "@/contexts/AppContext";
 
 const GRID = 20;
 const CELL = 18;
@@ -24,6 +25,7 @@ function randomFood(snake: Point[]) {
 
 export default function SnakeGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { addReward } = useApp();
 
   const [snake, setSnake] = useState<Point[]>([
     { x: 10, y: 10 },
@@ -85,6 +87,8 @@ export default function SnakeGame() {
         } else {
           setScore((s) => s + 1);
           setFood(randomFood(newSnake));
+          addReward("diamonds", 1); // Dodaj diament za jedzenie
+          addReward("light", 2); // Dodaj światło
         }
 
         return newSnake;
@@ -92,7 +96,7 @@ export default function SnakeGame() {
     }, 130);
 
     return () => clearInterval(interval);
-  }, [running, dir, food, gameOver]);
+  }, [running, dir, food, gameOver, addReward]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -169,7 +173,7 @@ export default function SnakeGame() {
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Nagroda</div>
-          <div className="kpi-value">💎 {score * 3}</div>
+          <div className="kpi-value">💎 {score} ☀️ {score * 2}</div>
         </div>
       </div>
 
@@ -192,7 +196,7 @@ export default function SnakeGame() {
 
         <div className="result-box">
           Sterowanie: strzałki ↑ ↓ ← →. Gra kończy się po uderzeniu w ścianę
-          albo w siebie.
+          albo w siebie. Każdy punkt daje nagrodę!
         </div>
       </div>
     </div>

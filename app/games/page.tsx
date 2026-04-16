@@ -15,13 +15,15 @@ export default function GamesPage() {
             text="Prawdziwa gra z planszą, sterowaniem i wynikiem."
           />
         </Link>
+        <Link href="/games/clicker">
+          <PortalCard
+            title="Clicker"
+            text="Prosta gra na klikanie, zbieraj światło i upgrade'uj."
+          />
+        </Link>
         <PortalCard
           title="Memory"
           text="Miejsce na kolejną grę: odkrywanie kart i rewardy."
-        />
-        <PortalCard
-          title="Light Clicker"
-          text="Miejsce na clicker, combo i zbieranie światła."
         />
       </div>
     </AppShell>

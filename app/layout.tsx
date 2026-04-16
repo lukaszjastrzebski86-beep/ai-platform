@@ -1,5 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { AppProvider } from "@/contexts/AppContext";
+import { AnimatePresence } from "framer-motion";
 
 export const metadata: Metadata = {
   title: "Heavenly AI Portal",
@@ -14,7 +16,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pl">
-      <body>{children}</body>
+      <body>
+        <AnimatePresence mode="wait">
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </AnimatePresence>
+      </body>
     </html>
   );
 }
