@@ -9,10 +9,54 @@ type ModuleType =
   | "quiz"
   | "task";
 
-type ChatMessage = {
+type QuizQuestion = {
+  id: string;
+  question: string;
+  options: string[];
+};
+
+type QuizPayload = {
+  title: string;
+  intro: string;
+  questions: QuizQuestion[];
+  resultGuide: {
+    mostlyA: string;
+    mostlyB: string;
+    mostlyC: string;
+  };
+};
+
+type TaskPayload = {
+  title: string;
+  goal: string;
+  duration: string;
+  steps: string[];
+  minimumVersion: string;
+  reward: string;
+};
+
+type TextMessage = {
+  id: string;
+  kind: "text";
   role: "user" | "assistant";
   content: string;
 };
+
+type QuizMessage = {
+  id: string;
+  kind: "quiz";
+  role: "assistant";
+  quiz: QuizPayload;
+};
+
+type TaskMessage = {
+  id: string;
+  kind: "task";
+  role: "assistant";
+  task: TaskPayload;
+};
+
+type ChatMessage = TextMessage | QuizMessage | TaskMessage;
 
 const modules: {
   key: ModuleType;
@@ -41,7 +85,7 @@ const modules: {
   {
     key: "task",
     title: "Zadanie",
-    desc: "Mikro‑akcje, plan minimum i następny krok",
+    desc: "Mikro-akcje, plan minimum i następny krok",
     emoji: "⚡",
   },
 ];
@@ -63,9 +107,9 @@ const quickPrompts: Record<ModuleType, string[]> = {
     "Pomóż mi nazwać, co się ze mną dzieje",
   ],
   quiz: [
-    "Zrób mi krótki quiz diagnostyczny",
-    "Sprawdź, w jakim jestem stanie",
-    "Zadaj mi kilka pytań i oceń sytuację",
+    "Daj mi krótki quiz o moim stanie",
+    "Zrób mi quiz o relacji",
+    "Sprawdź mnie krótkim testem",
   ],
   task: [
     "Daj mi zadanie na dziś",
@@ -74,6 +118,10 @@ const quickPrompts: Record<ModuleType, string[]> = {
   ],
 };
 
+function id() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
 export default function HomePage() {
   const [activeModule, setActiveModule] = useState<ModuleType>("general");
   const [input, setInput] = useState("");
@@ -81,6 +129,8 @@ export default function HomePage() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
+      id: id(),
+      kind: "text",
       role: "assistant",
       content:
         "Witaj. Jestem Twoim AI. Pomagam odzyskać jasność, spokój i kierunek w relacjach, emocjach i decyzjach. Wybierz moduł albo napisz, z czym mam Ci pomóc.",
@@ -96,7 +146,9 @@ export default function HomePage() {
     const content = (customText ?? input).trim();
     if (!content || loading) return;
 
-    const userMessage: ChatMessage = {
+    const userMessage: TextMessage = {
+      id: id(),
+      kind: "text",
       role: "user",
       content,
     };
@@ -123,6 +175,8 @@ export default function HomePage() {
         setMessages((prev) => [
           ...prev,
           {
+            id: id(),
+            kind: "text",
             role: "assistant",
             content: `Błąd: ${data?.error || "Nieznany błąd"}${
               data?.details ? ` — ${data.details}` : ""
@@ -132,9 +186,33 @@ export default function HomePage() {
         return;
       }
 
+      if (data.type === "quiz" && data.quiz) {
+        const quizMessage: QuizMessage = {
+          id: id(),
+          kind: "quiz",
+          role: "assistant",
+          quiz: data.quiz,
+        };
+        setMessages((prev) => [...prev, quizMessage]);
+        return;
+      }
+
+      if (data.type === "task" && data.task) {
+        const taskMessage: TaskMessage = {
+          id: id(),
+          kind: "task",
+          role: "assistant",
+          task: data.task,
+        };
+        setMessages((prev) => [...prev, taskMessage]);
+        return;
+      }
+
       setMessages((prev) => [
         ...prev,
         {
+          id: id(),
+          kind: "text",
           role: "assistant",
           content: data.reply || "Brak odpowiedzi",
         },
@@ -143,6 +221,8 @@ export default function HomePage() {
       setMessages((prev) => [
         ...prev,
         {
+          id: id(),
+          kind: "text",
           role: "assistant",
           content: `Błąd połączenia: ${error?.message || "Unknown error"}`,
         },
@@ -215,13 +295,6 @@ export default function HomePage() {
                 Zobacz moduły
               </button>
             </div>
-
-            <div className="hero-mini-grid">
-              <MiniStat title="Ukryte silniki" value="3" icon="✨" />
-              <MiniStat title="Moduły startowe" value="4" icon="🪽" />
-              <MiniStat title="Dostępność" value="24/7" icon="☀️" />
-              <MiniStat title="Możliwości" value="∞" icon="🌤️" />
-            </div>
           </div>
 
           <div className="hero-right">
@@ -229,7 +302,6 @@ export default function HomePage() {
               <div className="orb-ring orb-ring-1" />
               <div className="orb-ring orb-ring-2" />
               <div className="orb-ring orb-ring-3" />
-
               <div className="orb-core">
                 <div className="orb-core-inner">✨</div>
               </div>
@@ -247,14 +319,6 @@ export default function HomePage() {
               <div className="floating-card floating-3">
                 <div className="floating-label">AI online</div>
                 <div className="floating-value">3/3</div>
-              </div>
-            </div>
-
-            <div className="daily-card">
-              <div className="daily-head">Zadanie dnia</div>
-              <div className="daily-text">
-                Zatrzymaj się na 2 minuty i nazwij jedną rzecz, która dziś
-                najbardziej zabiera Ci energię. Potem napisz o tym do AI.
               </div>
             </div>
           </div>
@@ -329,19 +393,38 @@ export default function HomePage() {
             </div>
 
             <div className="messages-box">
-              {messages.map((msg, index) => (
-                <div
-                  key={`${msg.role}-${index}`}
-                  className={`message-row ${msg.role}`}
-                >
-                  <div className={`message-bubble ${msg.role}`}>
-                    <div className="message-label">
-                      {msg.role === "user" ? "Ty" : "AI"}
+              {messages.map((msg) => {
+                if (msg.kind === "text") {
+                  return (
+                    <div key={msg.id} className={`message-row ${msg.role}`}>
+                      <div className={`message-bubble ${msg.role}`}>
+                        <div className="message-label">
+                          {msg.role === "user" ? "Ty" : "AI"}
+                        </div>
+                        {msg.content}
+                      </div>
                     </div>
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
+                  );
+                }
+
+                if (msg.kind === "quiz") {
+                  return (
+                    <div key={msg.id} className="message-row assistant">
+                      <QuizCard quiz={msg.quiz} />
+                    </div>
+                  );
+                }
+
+                if (msg.kind === "task") {
+                  return (
+                    <div key={msg.id} className="message-row assistant">
+                      <TaskCard task={msg.task} />
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
             </div>
 
             <div className="input-wrap">
@@ -371,60 +454,48 @@ export default function HomePage() {
           </div>
 
           <div className="side-panel">
-            <div className="side-grid">
-              <InfoCard
-                title="Jak to działa"
-                icon="☀️"
-                text="Pod maską działają trzy szybkie role: zrozumienie problemu, plan działania i kontrola jakości. Użytkownik widzi tylko jedno, spójne AI."
-              />
+            <div className="sticky-stack">
+              <div className="reward-panel glass">
+                <div className="section-title small">Twój lot</div>
 
-              <InfoCard
-                title="Dla kogo"
-                icon="🪽"
-                text="Dla osób, które chcą zrozumieć relacje, uporządkować emocje, zrobić szybki quiz albo dostać następny krok, gdy brakuje jasności."
-              />
-            </div>
-
-            <div className="reward-panel glass">
-              <div className="section-title small">Twój lot</div>
-
-              <div className="reward-grid">
-                <RewardCard icon="🔥" label="Streak" value="7" />
-                <RewardCard icon="💎" label="Światło" value="248" />
-                <RewardCard icon="🎯" label="Cel dnia" value="1/3" />
-                <RewardCard icon="⚡" label="Energia" value="88%" />
+                <div className="reward-grid">
+                  <RewardCard icon="🔥" label="Streak" value="7" />
+                  <RewardCard icon="💎" label="Światło" value="248" />
+                  <RewardCard icon="🎯" label="Cel dnia" value="1/3" />
+                  <RewardCard icon="⚡" label="Energia" value="88%" />
+                </div>
               </div>
-            </div>
 
-            <div className="quick-start-card glass">
-              <div className="section-title small">Szybkie wejścia</div>
+              <div className="quick-start-card glass">
+                <div className="section-title small">Szybkie wejścia</div>
 
-              <div className="quick-start-list">
-                {[
-                  "Mam chaos w głowie",
-                  "Chcę zrozumieć relację",
-                  "Pomóż mi nazwać moje emocje",
-                  "Daj mi krótki quiz",
-                  "Potrzebuję zadania na dziś",
-                ].map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => sendMessage(item)}
-                    disabled={loading}
-                    className="quick-start-btn"
-                  >
-                    {item}
-                  </button>
-                ))}
+                <div className="quick-start-list">
+                  {[
+                    "Mam chaos w głowie",
+                    "Chcę zrozumieć relację",
+                    "Pomóż mi nazwać moje emocje",
+                    "Daj mi krótki quiz",
+                    "Potrzebuję zadania na dziś",
+                  ].map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => sendMessage(item)}
+                      disabled={loading}
+                      className="quick-start-btn"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="heaven-card glass">
-              <div className="section-title small">Światło • Energia • Forma</div>
-              <div className="section-text">
-                Produkt ma nie tylko odpowiadać, ale pomagać odzyskać kierunek,
-                spokój i ruch. To nie jest zwykły chatbot — to przestrzeń do
-                zrozumienia siebie i działania.
+              <div className="heaven-card glass">
+                <div className="section-title small">Jak to działa</div>
+                <div className="section-text">
+                  Relacje i emocje dają krótszą, bardziej produktową odpowiedź.
+                  Quiz i zadanie działają już jako prawdziwe karty interakcji,
+                  a nie tylko ściana tekstu.
+                </div>
               </div>
             </div>
           </div>
@@ -455,16 +526,14 @@ export default function HomePage() {
           background:
             radial-gradient(circle at 10% 22%, rgba(255, 255, 255, 0.75), transparent 17%),
             radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.75), transparent 15%),
-            radial-gradient(circle at 62% 0%, rgba(255, 255, 255, 0.56), transparent 14%),
-            radial-gradient(circle at 75% 74%, rgba(255, 255, 255, 0.32), transparent 24%);
+            radial-gradient(circle at 62% 0%, rgba(255, 255, 255, 0.56), transparent 14%);
           opacity: 0.95;
         }
 
         .sky-2 {
           background:
             radial-gradient(circle at 22% 62%, rgba(255, 255, 255, 0.26), transparent 18%),
-            radial-gradient(circle at 92% 72%, rgba(255, 255, 255, 0.20), transparent 22%),
-            radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.18), transparent 24%);
+            radial-gradient(circle at 92% 72%, rgba(255, 255, 255, 0.20), transparent 22%);
           opacity: 0.9;
         }
 
@@ -475,16 +544,11 @@ export default function HomePage() {
           pointer-events: none;
           background-image:
             radial-gradient(circle at 8% 12%, rgba(255,255,255,0.85) 0 2px, transparent 3px),
-            radial-gradient(circle at 18% 28%, rgba(255,255,255,0.75) 0 1.6px, transparent 2.5px),
             radial-gradient(circle at 36% 16%, rgba(255,255,255,0.85) 0 1.8px, transparent 2.5px),
-            radial-gradient(circle at 54% 10%, rgba(255,255,255,0.65) 0 1.5px, transparent 2.2px),
             radial-gradient(circle at 67% 20%, rgba(255,255,255,0.78) 0 1.8px, transparent 2.7px),
-            radial-gradient(circle at 82% 14%, rgba(255,255,255,0.85) 0 1.8px, transparent 2.5px),
             radial-gradient(circle at 90% 30%, rgba(255,255,255,0.78) 0 1.6px, transparent 2.3px),
             radial-gradient(circle at 15% 70%, rgba(255,255,255,0.82) 0 1.8px, transparent 2.5px),
-            radial-gradient(circle at 32% 84%, rgba(255,255,255,0.72) 0 1.6px, transparent 2.5px),
-            radial-gradient(circle at 66% 78%, rgba(255,255,255,0.82) 0 1.7px, transparent 2.5px),
-            radial-gradient(circle at 88% 64%, rgba(255,255,255,0.70) 0 1.6px, transparent 2.5px);
+            radial-gradient(circle at 66% 78%, rgba(255,255,255,0.82) 0 1.7px, transparent 2.5px);
           opacity: 0.85;
         }
 
@@ -502,7 +566,6 @@ export default function HomePage() {
           background: rgba(255, 255, 255, 0.55);
           top: -120px;
           left: -80px;
-          animation: drift 9s ease-in-out infinite alternate;
         }
 
         .glow-2 {
@@ -511,7 +574,6 @@ export default function HomePage() {
           background: rgba(255, 255, 255, 0.36);
           top: 10%;
           right: -100px;
-          animation: drift 10s ease-in-out infinite alternate;
         }
 
         .glow-3 {
@@ -520,7 +582,6 @@ export default function HomePage() {
           background: rgba(122, 223, 255, 0.25);
           bottom: -160px;
           left: 30%;
-          animation: drift 12s ease-in-out infinite alternate;
         }
 
         .container {
@@ -645,47 +706,10 @@ export default function HomePage() {
           box-shadow: 0 12px 28px rgba(128, 205, 255, 0.18);
         }
 
-        .hero-mini-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 14px;
-          margin-top: 26px;
-        }
-
-        .mini-stat {
-          border-radius: 22px;
-          padding: 16px;
-          background: linear-gradient(
-            180deg,
-            rgba(255, 255, 255, 0.84),
-            rgba(230, 247, 255, 0.62)
-          );
-          border: 1px solid rgba(255, 255, 255, 0.84);
-          box-shadow: 0 14px 30px rgba(125, 206, 255, 0.14);
-        }
-
-        .mini-stat-top {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-          font-weight: 700;
-          color: #4d7fa6;
-          margin-bottom: 8px;
-        }
-
-        .mini-stat-value {
-          font-size: 28px;
-          font-weight: 900;
-          color: #1e679e;
-        }
-
         .hero-right {
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 22px;
         }
 
         .orb-wrap {
@@ -707,25 +731,20 @@ export default function HomePage() {
         .orb-ring-1 {
           width: 320px;
           height: 320px;
-          animation: rotateSlow 18s linear infinite;
         }
 
         .orb-ring-2 {
           width: 250px;
           height: 250px;
           border-style: dashed;
-          animation: rotateReverse 12s linear infinite;
         }
 
         .orb-ring-3 {
           width: 170px;
           height: 170px;
-          opacity: 0.9;
-          animation: pulse 4s ease-in-out infinite;
         }
 
         .orb-core {
-          position: relative;
           width: 120px;
           height: 120px;
           border-radius: 50%;
@@ -738,12 +757,10 @@ export default function HomePage() {
             0 0 38px rgba(255,255,255,0.95),
             0 0 80px rgba(110, 214, 255, 0.66),
             0 0 120px rgba(134, 223, 255, 0.42);
-          animation: pulse 4.5s ease-in-out infinite;
         }
 
         .orb-core-inner {
           font-size: 34px;
-          filter: drop-shadow(0 0 20px rgba(255,255,255,0.88));
         }
 
         .floating-card {
@@ -758,25 +775,21 @@ export default function HomePage() {
           );
           border: 1px solid rgba(255, 255, 255, 0.82);
           box-shadow: 0 16px 36px rgba(120, 207, 255, 0.16);
-          backdrop-filter: blur(10px);
         }
 
         .floating-1 {
           top: 22px;
           left: 4px;
-          animation: bob 4.8s ease-in-out infinite;
         }
 
         .floating-2 {
           top: 68px;
           right: -6px;
-          animation: bob 5.3s ease-in-out infinite 1s;
         }
 
         .floating-3 {
           bottom: 34px;
           left: 18px;
-          animation: bob 4.4s ease-in-out infinite 0.6s;
         }
 
         .floating-label {
@@ -790,33 +803,6 @@ export default function HomePage() {
           font-size: 22px;
           font-weight: 900;
           color: #1e679e;
-        }
-
-        .daily-card {
-          width: 100%;
-          max-width: 420px;
-          border-radius: 24px;
-          padding: 18px;
-          background: linear-gradient(
-            180deg,
-            rgba(255, 255, 255, 0.78),
-            rgba(235, 249, 255, 0.48)
-          );
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          box-shadow: 0 16px 42px rgba(122, 205, 255, 0.16);
-        }
-
-        .daily-head {
-          font-size: 18px;
-          font-weight: 900;
-          color: #1e679e;
-          margin-bottom: 8px;
-        }
-
-        .daily-text {
-          color: #4c7ba2;
-          line-height: 1.6;
-          font-size: 15px;
         }
 
         .modules-grid {
@@ -833,17 +819,6 @@ export default function HomePage() {
           padding: 22px 18px;
           position: relative;
           overflow: hidden;
-        }
-
-        .module-card::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background:
-            radial-gradient(circle at top right, rgba(255,255,255,0.75), transparent 22%),
-            radial-gradient(circle at bottom left, rgba(114, 214, 255, 0.18), transparent 28%);
-          opacity: 0.9;
-          pointer-events: none;
         }
 
         .module-card.active {
@@ -863,17 +838,11 @@ export default function HomePage() {
           font-size: 28px;
           background:
             linear-gradient(135deg, rgba(255,255,255,0.98), rgba(189, 233, 255, 0.88));
-          box-shadow:
-            0 0 28px rgba(143, 228, 255, 0.24),
-            0 12px 26px rgba(110, 214, 255, 0.14);
-          position: relative;
-          z-index: 1;
+          box-shadow: 0 12px 26px rgba(110, 214, 255, 0.14);
           margin-bottom: 16px;
         }
 
         .module-title {
-          position: relative;
-          z-index: 1;
           font-size: 22px;
           font-weight: 900;
           color: #206499;
@@ -881,8 +850,6 @@ export default function HomePage() {
         }
 
         .module-desc {
-          position: relative;
-          z-index: 1;
           color: #4a79a1;
           font-size: 14px;
           line-height: 1.55;
@@ -893,8 +860,6 @@ export default function HomePage() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          position: relative;
-          z-index: 1;
           border-radius: 999px;
           padding: 8px 12px;
           background: rgba(93, 195, 255, 0.14);
@@ -907,7 +872,7 @@ export default function HomePage() {
         .chat-area {
           margin-top: 26px;
           display: grid;
-          grid-template-columns: 1.12fr 0.88fr;
+          grid-template-columns: minmax(0, 1.08fr) 380px;
           gap: 22px;
           align-items: start;
         }
@@ -924,6 +889,13 @@ export default function HomePage() {
           min-height: 760px;
           display: flex;
           flex-direction: column;
+        }
+
+        .sticky-stack {
+          position: sticky;
+          top: 18px;
+          display: grid;
+          gap: 16px;
         }
 
         .chat-top {
@@ -1007,7 +979,6 @@ export default function HomePage() {
           color: #2f6996;
           cursor: pointer;
           font-size: 13px;
-          box-shadow: 0 10px 22px rgba(138, 207, 255, 0.12);
         }
 
         .messages-box {
@@ -1070,6 +1041,123 @@ export default function HomePage() {
           font-weight: 900;
         }
 
+        .card-bubble {
+          width: min(100%, 640px);
+          border-radius: 26px;
+          padding: 18px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.96),
+            rgba(232, 247, 255, 0.92)
+          );
+          border: 1px solid rgba(160, 228, 255, 0.82);
+          color: #2a638e;
+          box-shadow: 0 16px 32px rgba(132, 210, 255, 0.12);
+        }
+
+        .card-title {
+          font-size: 24px;
+          font-weight: 900;
+          color: #1f6498;
+          margin-bottom: 6px;
+        }
+
+        .card-intro {
+          color: #4a7ba2;
+          line-height: 1.6;
+          margin-bottom: 16px;
+        }
+
+        .quiz-question {
+          margin-bottom: 18px;
+          padding: 14px;
+          border-radius: 18px;
+          background: rgba(255,255,255,0.66);
+          border: 1px solid rgba(174, 231, 255, 0.76);
+        }
+
+        .quiz-question-title {
+          font-weight: 800;
+          margin-bottom: 12px;
+          color: #2a638e;
+          line-height: 1.5;
+        }
+
+        .quiz-options {
+          display: grid;
+          gap: 8px;
+        }
+
+        .quiz-option {
+          text-align: left;
+          border-radius: 14px;
+          border: 1px solid rgba(160, 228, 255, 0.82);
+          background: rgba(255,255,255,0.88);
+          color: #2b6797;
+          padding: 10px 12px;
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        .quiz-option.active {
+          border: 2px solid rgba(89, 197, 255, 0.96);
+          background: linear-gradient(135deg, #ffffff, #d6f3ff);
+        }
+
+        .quiz-result {
+          margin-top: 16px;
+          border-radius: 18px;
+          padding: 16px;
+          background: linear-gradient(135deg, #effbff, #dff4ff);
+          border: 1px solid rgba(137, 217, 255, 0.86);
+        }
+
+        .quiz-submit {
+          margin-top: 8px;
+          border: none;
+          border-radius: 999px;
+          padding: 12px 18px;
+          cursor: pointer;
+          font-weight: 900;
+          color: #063a66;
+          background: linear-gradient(135deg, #64d1ff, #aceeff);
+        }
+
+        .task-meta {
+          display: grid;
+          gap: 10px;
+          margin: 14px 0;
+        }
+
+        .task-box {
+          border-radius: 16px;
+          padding: 12px 14px;
+          background: rgba(255,255,255,0.66);
+          border: 1px solid rgba(174, 231, 255, 0.76);
+        }
+
+        .task-label {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-weight: 900;
+          color: #5b8ab0;
+          margin-bottom: 6px;
+        }
+
+        .task-steps {
+          display: grid;
+          gap: 10px;
+          margin-top: 8px;
+        }
+
+        .task-step {
+          border-radius: 14px;
+          padding: 12px 14px;
+          background: rgba(255,255,255,0.88);
+          border: 1px solid rgba(160, 228, 255, 0.82);
+        }
+
         .input-wrap {
           margin-top: 14px;
         }
@@ -1124,34 +1212,6 @@ export default function HomePage() {
           align-content: start;
         }
 
-        .side-grid {
-          display: grid;
-          gap: 16px;
-        }
-
-        .info-card {
-          border-radius: 30px;
-          padding: 18px;
-        }
-
-        .info-head {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 10px;
-        }
-
-        .info-title {
-          font-size: 24px;
-          font-weight: 900;
-          color: #216397;
-        }
-
-        .info-text {
-          color: #4d7aa1;
-          line-height: 1.65;
-        }
-
         .reward-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -1199,55 +1259,7 @@ export default function HomePage() {
           color: #2f6996;
           padding: 13px 14px;
           cursor: pointer;
-          box-shadow: 0 10px 22px rgba(142, 209, 255, 0.12);
           font-weight: 700;
-        }
-
-        @keyframes rotateSlow {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes rotateReverse {
-          from {
-            transform: rotate(360deg);
-          }
-          to {
-            transform: rotate(0deg);
-          }
-        }
-
-        @keyframes drift {
-          from {
-            transform: translate3d(0, 0, 0);
-          }
-          to {
-            transform: translate3d(18px, -10px, 0);
-          }
-        }
-
-        @keyframes pulse {
-          0%,
-          100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.05);
-          }
-        }
-
-        @keyframes bob {
-          0%,
-          100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-8px);
-          }
         }
 
         @media (max-width: 1100px) {
@@ -1255,39 +1267,26 @@ export default function HomePage() {
             grid-template-columns: 1fr;
           }
 
-          .hero-mini-grid {
-            grid-template-columns: repeat(2, 1fr);
+          .modules-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .chat-area {
             grid-template-columns: 1fr;
           }
 
-          .modules-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+          .sticky-stack {
+            position: static;
           }
         }
 
         @media (max-width: 760px) {
-          .container {
-            padding: 18px 14px 42px;
-          }
-
-          .hero {
-            padding: 22px 18px;
-            border-radius: 28px;
+          .modules-grid {
+            grid-template-columns: 1fr;
           }
 
           .hero-left h1 {
             font-size: 48px;
-          }
-
-          .hero-mini-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .modules-grid {
-            grid-template-columns: 1fr;
           }
 
           .orb-wrap {
@@ -1310,12 +1309,10 @@ export default function HomePage() {
             height: 136px;
           }
 
-          .hero-right {
-            margin-top: 10px;
-          }
-
-          .message-bubble {
-            max-width: 92%;
+          .message-bubble,
+          .card-bubble {
+            max-width: 100%;
+            width: 100%;
           }
 
           .section-title {
@@ -1331,42 +1328,128 @@ export default function HomePage() {
   );
 }
 
-function MiniStat({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: string;
-  icon: string;
-}) {
+function QuizCard({ quiz }: { quiz: QuizPayload }) {
+  const [answers, setAnswers] = useState<Record<string, "A" | "B" | "C">>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  function setAnswer(questionId: string, option: string) {
+    const letter = option.trim().charAt(0).toUpperCase() as "A" | "B" | "C";
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: letter,
+    }));
+  }
+
+  const canSubmit = quiz.questions.every((q) => answers[q.id]);
+
+  let resultText = "";
+  if (submitted) {
+    const counts = { A: 0, B: 0, C: 0 };
+    Object.values(answers).forEach((v) => {
+      counts[v]++;
+    });
+
+    if (counts.A >= counts.B && counts.A >= counts.C) {
+      resultText = quiz.resultGuide.mostlyA;
+    } else if (counts.B >= counts.A && counts.B >= counts.C) {
+      resultText = quiz.resultGuide.mostlyB;
+    } else {
+      resultText = quiz.resultGuide.mostlyC;
+    }
+  }
+
   return (
-    <div className="mini-stat">
-      <div className="mini-stat-top">
-        <span>{icon}</span>
-        <span>{title}</span>
-      </div>
-      <div className="mini-stat-value">{value}</div>
+    <div className="card-bubble">
+      <div className="message-label">AI • Quiz</div>
+      <div className="card-title">{quiz.title}</div>
+      <div className="card-intro">{quiz.intro}</div>
+
+      {quiz.questions.map((q, idx) => (
+        <div key={q.id} className="quiz-question">
+          <div className="quiz-question-title">
+            {idx + 1}. {q.question}
+          </div>
+
+          <div className="quiz-options">
+            {q.options.map((option) => {
+              const letter = option.trim().charAt(0).toUpperCase();
+              const active = answers[q.id] === letter;
+
+              return (
+                <button
+                  key={option}
+                  className={`quiz-option ${active ? "active" : ""}`}
+                  onClick={() => setAnswer(q.id, option)}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {!submitted ? (
+        <button
+          className="quiz-submit"
+          disabled={!canSubmit}
+          onClick={() => setSubmitted(true)}
+          style={{ opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}
+        >
+          Pokaż wynik
+        </button>
+      ) : (
+        <div className="quiz-result">
+          <div className="task-label">Wynik</div>
+          <div>{resultText}</div>
+        </div>
+      )}
     </div>
   );
 }
 
-function InfoCard({
-  title,
-  text,
-  icon,
-}: {
-  title: string;
-  text: string;
-  icon: string;
-}) {
+function TaskCard({ task }: { task: TaskPayload }) {
+  const [done, setDone] = useState(false);
+
   return (
-    <div className="info-card glass">
-      <div className="info-head">
-        <span style={{ fontSize: 20 }}>{icon}</span>
-        <div className="info-title">{title}</div>
+    <div className="card-bubble">
+      <div className="message-label">AI • Zadanie</div>
+      <div className="card-title">{task.title}</div>
+      <div className="card-intro">{task.goal}</div>
+
+      <div className="task-meta">
+        <div className="task-box">
+          <div className="task-label">Czas</div>
+          <div>{task.duration}</div>
+        </div>
+
+        <div className="task-box">
+          <div className="task-label">Wersja minimum</div>
+          <div>{task.minimumVersion}</div>
+        </div>
       </div>
-      <div className="info-text">{text}</div>
+
+      <div className="task-label">Kroki</div>
+      <div className="task-steps">
+        {task.steps.map((step, index) => (
+          <div key={index} className="task-step">
+            <strong>{index + 1}.</strong> {step}
+          </div>
+        ))}
+      </div>
+
+      <div className="quiz-result" style={{ marginTop: 16 }}>
+        <div className="task-label">Nagroda</div>
+        <div>{task.reward}</div>
+      </div>
+
+      <button
+        className="quiz-submit"
+        onClick={() => setDone((v) => !v)}
+        style={{ marginTop: 14 }}
+      >
+        {done ? "Oznaczone jako zrobione ✅" : "Oznacz jako zrobione"}
+      </button>
     </div>
   );
 }
