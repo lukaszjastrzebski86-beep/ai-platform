@@ -58,6 +58,48 @@ type TaskMessage = {
 
 type ChatMessage = TextMessage | QuizMessage | TaskMessage;
 
+type SiteConfig = {
+  themeName: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  notice: string;
+  accentFrom: string;
+  accentTo: string;
+  badgeText: string;
+};
+
+type ProfileConfig = {
+  displayName: string;
+  title: string;
+  aura: string;
+  accent: string;
+  avatar: string;
+  badge: string;
+  bio: string;
+};
+
+const defaultSiteConfig: SiteConfig = {
+  themeName: "Heaven",
+  heroTitle: "Jedno AI.\nWięcej światła,\nmniej chaosu.",
+  heroSubtitle:
+    "Relacje, emocje, quizy, zadania, tarot, horoskop, numerologia, gra i panel admina do zmian na żywo — wszystko w jednym, pięknym interfejsie.",
+  notice:
+    "Dziś: odbierz bonus dnia, sprawdź kartę, uruchom quiz lub edytuj stronę w panelu admina.",
+  accentFrom: "#6be0ff",
+  accentTo: "#a4f1ff",
+  badgeText: "Heavenly AI Engine • LIVE",
+};
+
+const defaultProfileConfig: ProfileConfig = {
+  displayName: "Luq",
+  title: "Pilot Światła",
+  aura: "Spokojna, skupiona, nastawiona na kierunek i rozwój",
+  accent: "#63d9ff",
+  avatar: "🪽",
+  badge: "Pierwszy lot",
+  bio: "Badam relacje, emocje i nowe ścieżki rozwoju z pomocą AI.",
+};
+
 const modules: {
   key: ModuleType;
   title: string;
@@ -99,7 +141,7 @@ const quickPrompts: Record<ModuleType, string[]> = {
   relationships: [
     "Pomóż mi zrozumieć tę relację",
     "Czy tu są czerwone flagi?",
-    "Jak mam z nim / z nią rozmawiać?",
+    "Nie wiem czy ta osoba mnie manipuluje",
   ],
   emotions: [
     "Nie ogarniam swoich emocji",
@@ -275,18 +317,21 @@ export default function HomePage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [diamonds, setDiamonds] = useState(120);
-  const [light, setLight] = useState(240);
+  const [diamonds, setDiamonds] = useState(128);
+  const [light, setLight] = useState(264);
   const [energy, setEnergy] = useState(84);
   const [streak, setStreak] = useState(7);
   const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [dailyChestOpened, setDailyChestOpened] = useState(false);
 
   const [zodiac, setZodiac] = useState("Waga");
 
-const [tarotCard, setTarotCard] = useState<(typeof tarotDeck)[number] | null>(
-  null
-);
-const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([]);
+  const [tarotCard, setTarotCard] = useState<(typeof tarotDeck)[number] | null>(
+    null
+  );
+  const [tarotSpread, setTarotSpread] = useState<
+    (typeof tarotDeck)[number][]
+  >([]);
 
   const [birthDate, setBirthDate] = useState("");
   const lifePath = calcLifePath(birthDate);
@@ -298,6 +343,23 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
   const [gameTime, setGameTime] = useState(20);
   const [gameScore, setGameScore] = useState(0);
 
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(defaultSiteConfig);
+  const [adminPrompt, setAdminPrompt] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [pendingSiteConfig, setPendingSiteConfig] =
+    useState<Partial<SiteConfig> | null>(null);
+  const [adminExplanation, setAdminExplanation] = useState("");
+  const [previewAdminChanges, setPreviewAdminChanges] = useState(false);
+
+  const [profileConfig, setProfileConfig] =
+    useState<ProfileConfig>(defaultProfileConfig);
+  const [profilePrompt, setProfilePrompt] = useState("");
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [pendingProfileConfig, setPendingProfileConfig] =
+    useState<Partial<ProfileConfig> | null>(null);
+  const [profileExplanation, setProfileExplanation] = useState("");
+  const [previewProfileChanges, setPreviewProfileChanges] = useState(false);
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: id(),
@@ -308,10 +370,35 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
     },
   ]);
 
-  const currentQuickPrompts = useMemo(
-    () => quickPrompts[activeModule] || quickPrompts.general,
-    [activeModule]
-  );
+  useEffect(() => {
+    try {
+      const savedSite = localStorage.getItem("heaven-site-config");
+      const savedProfile = localStorage.getItem("heaven-profile-config");
+
+      if (savedSite) {
+        setSiteConfig(JSON.parse(savedSite));
+      }
+
+      if (savedProfile) {
+        setProfileConfig(JSON.parse(savedProfile));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("heaven-site-config", JSON.stringify(siteConfig));
+    } catch {}
+  }, [siteConfig]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "heaven-profile-config",
+        JSON.stringify(profileConfig)
+      );
+    } catch {}
+  }, [profileConfig]);
 
   useEffect(() => {
     if (!gameRunning) return;
@@ -330,6 +417,48 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
     return () => clearTimeout(timer);
   }, [gameRunning, gameTime, gameScore]);
 
+  const currentQuickPrompts = useMemo(
+    () => quickPrompts[activeModule] || quickPrompts.general,
+    [activeModule]
+  );
+
+  const effectiveSiteConfig =
+    previewAdminChanges && pendingSiteConfig
+      ? { ...siteConfig, ...pendingSiteConfig }
+      : siteConfig;
+
+  const effectiveProfileConfig =
+    previewProfileChanges && pendingProfileConfig
+      ? { ...profileConfig, ...pendingProfileConfig }
+      : profileConfig;
+
+  const themeVars = {
+    ["--accentFrom" as any]: effectiveSiteConfig.accentFrom,
+    ["--accentTo" as any]: effectiveSiteConfig.accentTo,
+    ["--accentShadow" as any]: effectiveSiteConfig.accentFrom,
+  };
+
+  const achievements = [
+    {
+      icon: "🔥",
+      label: "Streak",
+      text: streak >= 7 ? "7+ dni ciągłości" : "Budujesz ciągłość",
+      active: streak >= 7,
+    },
+    {
+      icon: "💎",
+      label: "Zbieracz światła",
+      text: diamonds >= 150 ? "Masz 150+ diamentów" : "Zbieraj diamenty",
+      active: diamonds >= 150,
+    },
+    {
+      icon: "🎁",
+      label: "Daily reward",
+      text: dailyClaimed ? "Odebrany dziś" : "Czeka na Ciebie",
+      active: dailyClaimed,
+    },
+  ];
+
   function claimDailyReward() {
     if (dailyClaimed) return;
     setDiamonds((d) => d + 25);
@@ -339,6 +468,14 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
     setDailyClaimed(true);
   }
 
+  function openDailyChest() {
+    if (dailyChestOpened) return;
+    setDiamonds((d) => d + 12);
+    setLight((l) => l + 14);
+    setEnergy((e) => Math.min(100, e + 6));
+    setDailyChestOpened(true);
+  }
+
   function drawTarotCard() {
     const random = tarotDeck[Math.floor(Math.random() * tarotDeck.length)];
     setTarotCard(random);
@@ -346,7 +483,9 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
   }
 
   function drawTarotSpread() {
-    const shuffled = [...tarotDeck].sort(() => Math.random() - 0.5).slice(0, 3);
+    const shuffled = [...tarotDeck]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3);
     setTarotSpread(shuffled);
     setLight((l) => l + 5);
   }
@@ -400,6 +539,7 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          action: "chat",
           message: content,
           module: activeModule,
         }),
@@ -475,6 +615,105 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
     }
   }
 
+  async function runAdminPreview() {
+    if (!adminPrompt.trim()) return;
+    setAdminLoading(true);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "admin",
+          prompt: adminPrompt,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.ok) {
+        alert(data?.details || data?.error || "Błąd panelu admina.");
+        return;
+      }
+
+      setPendingSiteConfig(data.preview || null);
+      setAdminExplanation(data.explanation || "");
+      setPreviewAdminChanges(true);
+    } catch (error: any) {
+      alert(error?.message || "Błąd połączenia.");
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+  function acceptAdminPreview() {
+    if (!pendingSiteConfig) return;
+    setSiteConfig((prev) => ({
+      ...prev,
+      ...pendingSiteConfig,
+    }));
+    setPendingSiteConfig(null);
+    setAdminExplanation("");
+    setPreviewAdminChanges(false);
+  }
+
+  function discardAdminPreview() {
+    setPendingSiteConfig(null);
+    setAdminExplanation("");
+    setPreviewAdminChanges(false);
+  }
+
+  async function runProfilePreview() {
+    if (!profilePrompt.trim()) return;
+    setProfileLoading(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "profile",
+          prompt: profilePrompt,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.ok) {
+        alert(data?.details || data?.error || "Błąd edytora profilu.");
+        return;
+      }
+
+      setPendingProfileConfig(data.preview || null);
+      setProfileExplanation(data.explanation || "");
+      setPreviewProfileChanges(true);
+    } catch (error: any) {
+      alert(error?.message || "Błąd połączenia.");
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  function acceptProfilePreview() {
+    if (!pendingProfileConfig) return;
+    setProfileConfig((prev) => ({
+      ...prev,
+      ...pendingProfileConfig,
+    }));
+    setPendingProfileConfig(null);
+    setProfileExplanation("");
+    setPreviewProfileChanges(false);
+  }
+
+  function discardProfilePreview() {
+    setPendingProfileConfig(null);
+    setProfileExplanation("");
+    setPreviewProfileChanges(false);
+  }
+
   function onEnter(
     e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
   ) {
@@ -485,36 +724,39 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
   }
 
   return (
-    <main className="page">
-      <div className="sky-layer sky-1" />
-      <div className="sky-layer sky-2" />
-      <div className="stars" />
+    <main className="page" style={themeVars as React.CSSProperties}>
+      <div className="background-layer" />
+      <div className="cloud cloud-1" />
+      <div className="cloud cloud-2" />
+      <div className="cloud cloud-3" />
+      <div className="sparkles" />
       <div className="glow glow-1" />
       <div className="glow glow-2" />
       <div className="glow glow-3" />
 
       <div className="container">
+        <div className="top-notice glass">
+          <div className="top-notice-left">
+            <span className="live-dot" />
+            <span>{effectiveSiteConfig.badgeText}</span>
+          </div>
+          <div className="top-notice-right">{effectiveSiteConfig.notice}</div>
+        </div>
+
         <section className="hero glass">
           <div className="hero-left">
-            <div className="hero-badge">
-              <span>☁️</span>
-              <span>Heavenly AI Engine</span>
-              <span className="live-dot" />
-              <span>LIVE</span>
-            </div>
+            <div className="hero-chip">☁️ {effectiveSiteConfig.themeName}</div>
 
             <h1>
-              Jedno AI.
-              <br />
-              Więcej światła,
-              <br />
-              mniej chaosu.
+              {effectiveSiteConfig.heroTitle.split("\n").map((line, i) => (
+                <span key={i}>
+                  {line}
+                  <br />
+                </span>
+              ))}
             </h1>
 
-            <p className="hero-text">
-              Relacje, emocje, quizy, zadania, tarot, horoskop, numerologia,
-              diamenty i grywalizacja — wszystko w jednym, pięknym interfejsie.
-            </p>
+            <p className="hero-text">{effectiveSiteConfig.heroSubtitle}</p>
 
             <div className="hero-actions">
               <button
@@ -530,50 +772,147 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
               <button
                 className="secondary-btn"
                 onClick={() => {
-                  const el = document.getElementById("magic-section");
+                  const el = document.getElementById("admin-section");
                   el?.scrollIntoView({ behavior: "smooth" });
                 }}
               >
-                Magia dnia
+                Panel admina
               </button>
+            </div>
+
+            <div className="hero-mini-grid">
+              <MiniStat label="Diamenty" value={String(diamonds)} icon="💎" />
+              <MiniStat label="Światło" value={String(light)} icon="☀️" />
+              <MiniStat label="Energia" value={`${energy}%`} icon="⚡" />
+              <MiniStat label="Streak" value={String(streak)} icon="🔥" />
             </div>
           </div>
 
           <div className="hero-right">
-            <div className="orb-wrap">
-              <div className="orb-ring orb-ring-1" />
-              <div className="orb-ring orb-ring-2" />
-              <div className="orb-ring orb-ring-3" />
-              <div className="orb-core">
-                <div className="orb-core-inner">✨</div>
+            <div className="orbital">
+              <div className="orbital-ring ring-1" />
+              <div className="orbital-ring ring-2" />
+              <div className="orbital-ring ring-3" />
+              <div className="orbital-core">
+                <div className="orbital-core-inner">✨</div>
               </div>
 
-              <div className="floating-card floating-1">
-                <div className="floating-label">Diamenty</div>
-                <div className="floating-value">{diamonds}</div>
+              <div className="orbit-bubble orbit-1">
+                <div className="bubble-label">Karta dnia</div>
+                <div className="bubble-value">
+                  {tarotCard ? tarotCard.name : "—"}
+                </div>
               </div>
 
-              <div className="floating-card floating-2">
-                <div className="floating-label">Światło</div>
-                <div className="floating-value">{light}</div>
+              <div className="orbit-bubble orbit-2">
+                <div className="bubble-label">Znak</div>
+                <div className="bubble-value">{zodiac}</div>
               </div>
 
-              <div className="floating-card floating-3">
-                <div className="floating-label">Energia</div>
-                <div className="floating-value">{energy}%</div>
+              <div className="orbit-bubble orbit-3">
+                <div className="bubble-label">Profil</div>
+                <div className="bubble-value">
+                  {effectiveProfileConfig.displayName}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="top-stats-grid">
+        <section className="reward-grid">
           <RewardCard icon="💎" label="Diamenty" value={String(diamonds)} />
           <RewardCard icon="☀️" label="Światło" value={String(light)} />
           <RewardCard icon="⚡" label="Energia" value={`${energy}%`} />
           <RewardCard icon="🔥" label="Streak" value={`${streak}`} />
         </section>
 
-        <section id="modules-section" className="modules-grid">
+        <section className="daily-grid">
+          <div className="daily-card glass">
+            <div className="card-head">
+              <div className="section-title small">Daily Reward</div>
+              <div className="tag">+25 💎</div>
+            </div>
+            <div className="section-text">
+              Odbierz bonus dnia i zwiększ swój streak.
+            </div>
+            <button
+              className="action-btn"
+              onClick={claimDailyReward}
+              disabled={dailyClaimed}
+              style={{
+                marginTop: 14,
+                opacity: dailyClaimed ? 0.55 : 1,
+                cursor: dailyClaimed ? "not-allowed" : "pointer",
+              }}
+            >
+              {dailyClaimed ? "Odebrane ✅" : "Odbierz"}
+            </button>
+          </div>
+
+          <div className="daily-card glass">
+            <div className="card-head">
+              <div className="section-title small">Skrzynia dnia</div>
+              <div className="tag">🎁</div>
+            </div>
+            <div className="section-text">
+              Otwórz skrzynię i zgarnij diamenty oraz światło.
+            </div>
+            <button
+              className="action-btn"
+              onClick={openDailyChest}
+              disabled={dailyChestOpened}
+              style={{
+                marginTop: 14,
+                opacity: dailyChestOpened ? 0.55 : 1,
+                cursor: dailyChestOpened ? "not-allowed" : "pointer",
+              }}
+            >
+              {dailyChestOpened ? "Otwarta ✅" : "Otwórz"}
+            </button>
+          </div>
+
+          <div className="daily-card glass">
+            <div className="card-head">
+              <div className="section-title small">Koło fortuny</div>
+              <div className="tag">🎡</div>
+            </div>
+            <div className="section-text">
+              Jedno kliknięcie, szybka nagroda, trochę losu.
+            </div>
+            <button
+              className="action-btn"
+              onClick={spinWheel}
+              disabled={wheelSpinning}
+              style={{ marginTop: 14 }}
+            >
+              {wheelSpinning ? "Kręci się..." : "Zakręć"}
+            </button>
+            {wheelResult && <div className="result-box">{wheelResult}</div>}
+          </div>
+
+          <div className="daily-card glass">
+            <div className="card-head">
+              <div className="section-title small">Twoje odznaki</div>
+              <div className="tag">🏅</div>
+            </div>
+            <div className="achievement-list">
+              {achievements.map((item) => (
+                <div
+                  key={item.label}
+                  className={`achievement ${item.active ? "active" : ""}`}
+                >
+                  <span className="achievement-icon">{item.icon}</span>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <div>{item.text}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="modules-grid">
           {modules.map((mod) => {
             const active = activeModule === mod.key;
             return (
@@ -585,7 +924,7 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
                 <div className="module-icon">{mod.emoji}</div>
                 <div className="module-title">{mod.title}</div>
                 <div className="module-desc">{mod.desc}</div>
-                {active && <div className="module-active-badge">Aktywny moduł</div>}
+                {active && <div className="module-active-badge">Aktywny</div>}
               </button>
             );
           })}
@@ -714,153 +1053,285 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
 
           <div className="side-panel">
             <div className="sticky-stack">
-              <div className="reward-panel glass">
-                <div className="section-title small">Daily Reward</div>
-                <div className="section-text">
-                  Odbierz bonus dnia i zwiększ swój streak.
+              <div className="side-card glass">
+                <div className="section-title small">Horoskop dnia</div>
+                <div className="field-row">
+                  <select
+                    value={zodiac}
+                    onChange={(e) => setZodiac(e.target.value)}
+                    className="select"
+                  >
+                    {zodiacSigns.map((sign) => (
+                      <option key={sign} value={sign}>
+                        {sign}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <button
-                  className="action-btn"
-                  onClick={claimDailyReward}
-                  disabled={dailyClaimed}
-                  style={{
-                    marginTop: 14,
-                    opacity: dailyClaimed ? 0.55 : 1,
-                    cursor: dailyClaimed ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {dailyClaimed ? "Odebrane ✅" : "Odbierz +25 diamentów"}
-                </button>
+                <div className="result-box">{horoscopeMap[zodiac]}</div>
               </div>
 
-              <div className="reward-panel glass">
-                <div className="section-title small">Koło fortuny</div>
-                <div className="section-text">
-                  Jedno kliknięcie, szybka nagroda, trochę losu.
+              <div className="side-card glass">
+                <div className="section-title small">Karta dnia</div>
+                <div className="button-row">
+                  <button className="action-btn" onClick={drawTarotCard}>
+                    Losuj
+                  </button>
+                  <button className="action-btn secondary" onClick={drawTarotSpread}>
+                    3 karty
+                  </button>
                 </div>
-                <button
-                  className="action-btn"
-                  onClick={spinWheel}
-                  disabled={wheelSpinning}
-                  style={{ marginTop: 14 }}
-                >
-                  {wheelSpinning ? "Kręci się..." : "Zakręć"}
-                </button>
-                {wheelResult && <div className="result-box">{wheelResult}</div>}
+
+                {tarotCard && (
+                  <div className="result-box">
+                    <strong>{tarotCard.name}</strong>
+                    <div style={{ marginTop: 8 }}>{tarotCard.meaning}</div>
+                  </div>
+                )}
+
+                {tarotSpread.length > 0 && (
+                  <div className="spread-grid">
+                    {tarotSpread.map((card, index) => (
+                      <div key={`${card.name}-${index}`} className="mini-panel">
+                        <div className="task-label">
+                          {index === 0
+                            ? "Przeszłość"
+                            : index === 1
+                            ? "Teraźniejszość"
+                            : "Przyszłość"}
+                        </div>
+                        <strong>{card.name}</strong>
+                        <div style={{ marginTop: 6 }}>{card.meaning}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="side-card glass">
+                <div className="section-title small">Numerologia</div>
+                <div className="field-row">
+                  <input
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    className="date-input"
+                  />
+                </div>
+
+                {lifePath !== null && (
+                  <div className="result-box">
+                    <strong>Twoja liczba drogi życia: {lifePath}</strong>
+                    <div style={{ marginTop: 8 }}>
+                      {lifePathMeaning(lifePath)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="side-card glass">
+                <div className="section-title small">
+                  Mini gra: zbieranie światła
+                </div>
+                <div className="section-text">
+                  Klikaj światło przez 20 sekund. Zdobyte punkty zamienią się na
+                  diamenty.
+                </div>
+
+                <div className="button-row">
+                  <button className="action-btn" onClick={startLightGame}>
+                    Start
+                  </button>
+                </div>
+
+                <div className="game-panel">
+                  <div className="game-stats">
+                    <div className="mini-panel">
+                      <div className="task-label">Czas</div>
+                      <strong>{gameTime}s</strong>
+                    </div>
+                    <div className="mini-panel">
+                      <div className="task-label">Punkty</div>
+                      <strong>{gameScore}</strong>
+                    </div>
+                  </div>
+
+                  <button
+                    className={`light-orb-btn ${gameRunning ? "live" : ""}`}
+                    onClick={collectLight}
+                  >
+                    ✨
+                  </button>
+
+                  <div className="section-text" style={{ marginTop: 10 }}>
+                    {gameRunning
+                      ? "Klikaj szybko, zbieraj światło."
+                      : "Kliknij Start, żeby zacząć."}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="magic-section" className="magic-grid">
-          <div className="magic-card glass">
-            <div className="section-title small">Horoskop dnia</div>
-            <div className="field-row">
-              <select
-                value={zodiac}
-                onChange={(e) => setZodiac(e.target.value)}
-                className="select"
+        <section className="profile-admin-grid">
+          <div className="profile-card glass">
+            <div className="section-title">Twój profil</div>
+            <div className="section-subtitle">
+              Każdy użytkownik może zmieniać wygląd i styl swojego profilu komendą.
+            </div>
+
+            <div
+              className="profile-preview"
+              style={{
+                borderColor: effectiveProfileConfig.accent,
+                boxShadow: `0 20px 50px ${effectiveProfileConfig.accent}30`,
+              }}
+            >
+              <div
+                className="profile-avatar"
+                style={{
+                  boxShadow: `0 0 28px ${effectiveProfileConfig.accent}`,
+                }}
               >
-                {zodiacSigns.map((sign) => (
-                  <option key={sign} value={sign}>
-                    {sign}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="result-box">{horoscopeMap[zodiac]}</div>
-          </div>
-
-          <div className="magic-card glass">
-            <div className="section-title small">Tarot / karta dnia</div>
-            <div className="button-row">
-              <button className="action-btn" onClick={drawTarotCard}>
-                Losuj kartę dnia
-              </button>
-              <button className="action-btn secondary" onClick={drawTarotSpread}>
-                3 karty
-              </button>
-            </div>
-
-            {tarotCard && (
-              <div className="result-box">
-                <strong>{tarotCard.name}</strong>
-                <div style={{ marginTop: 8 }}>{tarotCard.meaning}</div>
+                {effectiveProfileConfig.avatar}
               </div>
-            )}
 
-            {tarotSpread.length > 0 && (
-              <div className="spread-grid">
-                {tarotSpread.map((card, index) => (
-                  <div key={`${card.name}-${index}`} className="mini-panel">
-                    <div className="task-label">
-                      {index === 0
-                        ? "Przeszłość"
-                        : index === 1
-                        ? "Teraźniejszość"
-                        : "Przyszłość"}
-                    </div>
-                    <strong>{card.name}</strong>
-                    <div style={{ marginTop: 6 }}>{card.meaning}</div>
-                  </div>
-                ))}
+              <div className="profile-info">
+                <div className="profile-name">
+                  {effectiveProfileConfig.displayName}
+                </div>
+                <div className="profile-title">
+                  {effectiveProfileConfig.title}
+                </div>
+                <div className="profile-aura">{effectiveProfileConfig.aura}</div>
+
+                <div className="profile-badges">
+                  <span
+                    className="profile-badge"
+                    style={{
+                      background: `${effectiveProfileConfig.accent}22`,
+                      borderColor: `${effectiveProfileConfig.accent}66`,
+                    }}
+                  >
+                    {effectiveProfileConfig.badge}
+                  </span>
+                </div>
+
+                <p className="profile-bio">{effectiveProfileConfig.bio}</p>
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="magic-card glass">
-            <div className="section-title small">Numerologia</div>
-            <div className="field-row">
-              <input
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                className="date-input"
+            <div className="editor-box">
+              <div className="section-title small">Edytor profilu komendą</div>
+              <div className="section-text">
+                Np. „Ustaw mój profil na złoto‑niebieski, nadaj mi tytuł
+                Kapitan Światła, dodaj orła jako avatar i bardziej bojowy
+                klimat.”
+              </div>
+
+              <textarea
+                value={profilePrompt}
+                onChange={(e) => setProfilePrompt(e.target.value)}
+                className="editor-input"
+                rows={4}
+                placeholder="Napisz jak ma wyglądać Twój profil..."
               />
-            </div>
 
-            {lifePath !== null && (
-              <div className="result-box">
-                <strong>Twoja liczba drogi życia: {lifePath}</strong>
-                <div style={{ marginTop: 8 }}>{lifePathMeaning(lifePath)}</div>
+              <div className="button-row">
+                <button
+                  className="action-btn"
+                  onClick={runProfilePreview}
+                  disabled={profileLoading}
+                >
+                  {profileLoading ? "AI projektuje..." : "Stwórz podgląd"}
+                </button>
+
+                {pendingProfileConfig && (
+                  <>
+                    <button
+                      className="action-btn secondary"
+                      onClick={acceptProfilePreview}
+                    >
+                      Akceptuję
+                    </button>
+                    <button
+                      className="action-btn secondary"
+                      onClick={discardProfilePreview}
+                    >
+                      Odrzuć
+                    </button>
+                  </>
+                )}
               </div>
-            )}
+
+              {profileExplanation && (
+                <div className="result-box">{profileExplanation}</div>
+              )}
+            </div>
           </div>
 
-          <div className="magic-card glass">
-            <div className="section-title small">Mini gra: zbieranie światła</div>
-            <div className="section-text">
-              Klikaj światło przez 20 sekund. Zdobyte punkty zamienią się na diamenty.
-            </div>
-            <div className="button-row">
-              <button className="action-btn" onClick={startLightGame}>
-                Start
-              </button>
+          <div id="admin-section" className="admin-card glass">
+            <div className="section-title">Panel admina • AI Studio</div>
+            <div className="section-subtitle">
+              Wpisz polecenie zmiany strony. AI przygotuje podgląd, a Ty
+              akceptujesz albo odrzucasz.
             </div>
 
-            <div className="game-panel">
-              <div className="game-stats">
-                <div className="mini-panel">
-                  <div className="task-label">Czas</div>
-                  <strong>{gameTime}s</strong>
-                </div>
-                <div className="mini-panel">
-                  <div className="task-label">Punkty</div>
-                  <strong>{gameScore}</strong>
-                </div>
+            <div className="editor-box">
+              <div className="section-text">
+                Np. „Zmień tytuł na ‘Świątynia Światła’, dodaj bardziej złoty
+                klimat, inny komunikat górny i badge ‘Aurora Release’.”
               </div>
 
-              <button
-                className={`light-orb-btn ${gameRunning ? "live" : ""}`}
-                onClick={collectLight}
-              >
-                ✨
-              </button>
+              <textarea
+                value={adminPrompt}
+                onChange={(e) => setAdminPrompt(e.target.value)}
+                className="editor-input"
+                rows={5}
+                placeholder="Napisz polecenie zmiany strony..."
+              />
 
-              <div className="section-text" style={{ marginTop: 10 }}>
-                {gameRunning
-                  ? "Klikaj szybko, zbieraj światło."
-                  : "Kliknij Start, żeby zacząć."}
+              <div className="button-row">
+                <button
+                  className="action-btn"
+                  onClick={runAdminPreview}
+                  disabled={adminLoading}
+                >
+                  {adminLoading ? "AI tworzy podgląd..." : "Stwórz podgląd"}
+                </button>
+
+                {pendingSiteConfig && (
+                  <>
+                    <button
+                      className="action-btn secondary"
+                      onClick={acceptAdminPreview}
+                    >
+                      Akceptuję zmiany
+                    </button>
+                    <button
+                      className="action-btn secondary"
+                      onClick={discardAdminPreview}
+                    >
+                      Odrzuć
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {adminExplanation && (
+                <div className="result-box">{adminExplanation}</div>
+              )}
+            </div>
+
+            <div className="admin-help-grid">
+              <div className="mini-panel">
+                <div className="task-label">Możesz zmienić</div>
+                <div>tytuł, podtytuł, kolory akcentu, badge i górny komunikat</div>
+              </div>
+              <div className="mini-panel">
+                <div className="task-label">Działa jako</div>
+                <div>live preview w przeglądarce z akceptacją lub odrzuceniem</div>
               </div>
             </div>
           </div>
@@ -872,49 +1343,84 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           min-height: 100vh;
           position: relative;
           overflow: hidden;
-          color: #17365d;
+          color: #123a63;
           font-family: Inter, ui-sans-serif, system-ui, -apple-system,
             BlinkMacSystemFont, Segoe UI, sans-serif;
           background:
-            radial-gradient(circle at 50% -20%, rgba(255, 255, 255, 0.96), transparent 24%),
-            linear-gradient(180deg, #e8f8ff 0%, #c7ebff 18%, #98d8ff 40%, #7bcbff 70%, #70c5ff 100%);
+            radial-gradient(circle at 50% -20%, rgba(255,255,255,0.98), transparent 24%),
+            linear-gradient(
+              180deg,
+              #ecfbff 0%,
+              #d6f3ff 20%,
+              #a8e3ff 52%,
+              #8ad2ff 78%,
+              #75c9ff 100%
+            );
         }
 
-        .sky-layer {
+        .background-layer {
           position: fixed;
           inset: 0;
-          pointer-events: none;
           z-index: 0;
-        }
-
-        .sky-1 {
+          pointer-events: none;
           background:
-            radial-gradient(circle at 10% 22%, rgba(255, 255, 255, 0.75), transparent 17%),
-            radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.75), transparent 15%),
-            radial-gradient(circle at 62% 0%, rgba(255, 255, 255, 0.56), transparent 14%);
-          opacity: 0.95;
+            radial-gradient(circle at 12% 18%, rgba(255,255,255,0.85), transparent 16%),
+            radial-gradient(circle at 88% 14%, rgba(255,255,255,0.78), transparent 16%),
+            radial-gradient(circle at 30% 76%, rgba(255,255,255,0.32), transparent 20%),
+            radial-gradient(circle at 78% 72%, rgba(255,255,255,0.26), transparent 22%);
         }
 
-        .sky-2 {
+        .cloud {
+          position: fixed;
+          z-index: 0;
+          filter: blur(10px);
+          opacity: 0.55;
+          pointer-events: none;
           background:
-            radial-gradient(circle at 22% 62%, rgba(255, 255, 255, 0.26), transparent 18%),
-            radial-gradient(circle at 92% 72%, rgba(255, 255, 255, 0.20), transparent 22%);
-          opacity: 0.9;
+            radial-gradient(circle at 30% 50%, rgba(255,255,255,0.95), transparent 22%),
+            radial-gradient(circle at 48% 38%, rgba(255,255,255,0.95), transparent 22%),
+            radial-gradient(circle at 62% 52%, rgba(255,255,255,0.95), transparent 24%),
+            radial-gradient(circle at 50% 64%, rgba(255,255,255,0.95), transparent 24%);
+          animation: drift 32s linear infinite;
         }
 
-        .stars {
+        .cloud-1 {
+          width: 240px;
+          height: 130px;
+          top: 80px;
+          left: -80px;
+        }
+
+        .cloud-2 {
+          width: 300px;
+          height: 150px;
+          top: 160px;
+          right: -110px;
+          animation-duration: 42s;
+        }
+
+        .cloud-3 {
+          width: 220px;
+          height: 110px;
+          top: 520px;
+          left: 8%;
+          animation-duration: 38s;
+        }
+
+        .sparkles {
           position: fixed;
           inset: 0;
           z-index: 0;
           pointer-events: none;
           background-image:
-            radial-gradient(circle at 8% 12%, rgba(255,255,255,0.85) 0 2px, transparent 3px),
-            radial-gradient(circle at 36% 16%, rgba(255,255,255,0.85) 0 1.8px, transparent 2.5px),
-            radial-gradient(circle at 67% 20%, rgba(255,255,255,0.78) 0 1.8px, transparent 2.7px),
-            radial-gradient(circle at 90% 30%, rgba(255,255,255,0.78) 0 1.6px, transparent 2.3px),
-            radial-gradient(circle at 15% 70%, rgba(255,255,255,0.82) 0 1.8px, transparent 2.5px),
-            radial-gradient(circle at 66% 78%, rgba(255,255,255,0.82) 0 1.7px, transparent 2.5px);
-          opacity: 0.85;
+            radial-gradient(circle at 12% 20%, rgba(255,255,255,0.95) 0 1.5px, transparent 2px),
+            radial-gradient(circle at 34% 12%, rgba(255,255,255,0.95) 0 1px, transparent 2px),
+            radial-gradient(circle at 57% 22%, rgba(255,255,255,0.95) 0 1.5px, transparent 2px),
+            radial-gradient(circle at 84% 26%, rgba(255,255,255,0.95) 0 1px, transparent 2px),
+            radial-gradient(circle at 18% 70%, rgba(255,255,255,0.95) 0 1px, transparent 2px),
+            radial-gradient(circle at 66% 72%, rgba(255,255,255,0.95) 0 1px, transparent 2px),
+            radial-gradient(circle at 87% 62%, rgba(255,255,255,0.95) 0 1px, transparent 2px);
+          opacity: 0.88;
         }
 
         .glow {
@@ -928,134 +1434,156 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
         .glow-1 {
           width: 360px;
           height: 360px;
-          background: rgba(255, 255, 255, 0.55);
-          top: -120px;
-          left: -80px;
+          top: -100px;
+          left: -90px;
+          background: rgba(255,255,255,0.52);
         }
 
         .glow-2 {
-          width: 300px;
-          height: 300px;
-          background: rgba(255, 255, 255, 0.36);
-          top: 10%;
-          right: -100px;
+          width: 360px;
+          height: 360px;
+          right: -120px;
+          top: 140px;
+          background: color-mix(in srgb, var(--accentFrom) 26%, transparent);
         }
 
         .glow-3 {
           width: 440px;
           height: 440px;
-          background: rgba(122, 223, 255, 0.25);
           bottom: -160px;
-          left: 30%;
+          left: 34%;
+          background: color-mix(in srgb, var(--accentTo) 25%, transparent);
         }
 
         .container {
           position: relative;
           z-index: 1;
-          max-width: 1320px;
+          max-width: 1360px;
           margin: 0 auto;
-          padding: 24px 18px 60px;
+          padding: 22px 18px 56px;
         }
 
         .glass {
           background: linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.68),
-            rgba(255, 255, 255, 0.34)
+            rgba(255,255,255,0.7),
+            rgba(255,255,255,0.38)
           );
-          border: 1px solid rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(255,255,255,0.82);
           box-shadow:
-            0 22px 58px rgba(91, 182, 255, 0.20),
-            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+            0 22px 60px color-mix(in srgb, var(--accentFrom) 16%, transparent),
+            inset 0 1px 0 rgba(255,255,255,0.98);
           backdrop-filter: blur(16px);
         }
 
-        .hero {
-          display: grid;
-          grid-template-columns: 1.08fr 0.92fr;
-          gap: 28px;
-          padding: 32px 30px;
-          border-radius: 34px;
+        .top-notice {
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          align-items: center;
+          border-radius: 18px;
+          padding: 12px 16px;
+          margin-bottom: 18px;
         }
 
-        .hero-left h1 {
-          margin: 0;
-          font-size: clamp(42px, 7vw, 84px);
-          line-height: 0.96;
-          font-weight: 900;
-          letter-spacing: -0.05em;
-          color: #1a5c90;
-          text-shadow:
-            0 0 12px rgba(255,255,255,0.65),
-            0 0 28px rgba(113, 215, 255, 0.34);
-        }
-
-        .hero-text {
-          margin-top: 18px;
-          max-width: 680px;
-          font-size: 18px;
-          line-height: 1.65;
-          color: #40739d;
-        }
-
-        .hero-badge {
+        .top-notice-left {
           display: inline-flex;
           align-items: center;
           gap: 10px;
-          border-radius: 999px;
-          padding: 9px 14px;
-          margin-bottom: 18px;
-          background: rgba(255, 255, 255, 0.72);
-          border: 1px solid rgba(255, 255, 255, 0.82);
-          box-shadow: 0 12px 30px rgba(111, 197, 255, 0.22);
           font-weight: 800;
-          color: #2d6e9e;
+          color: #1e6c9a;
+        }
+
+        .top-notice-right {
+          color: #40739d;
           font-size: 14px;
+          line-height: 1.5;
         }
 
         .live-dot {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: #34d399;
-          box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.18);
+          background: #2fe17d;
+          box-shadow: 0 0 0 6px rgba(47, 225, 125, 0.18);
+        }
+
+        .hero {
+          display: grid;
+          grid-template-columns: 1.08fr 0.92fr;
+          gap: 28px;
+          padding: 34px 30px;
+          border-radius: 34px;
+        }
+
+        .hero-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 14px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.74);
+          border: 1px solid rgba(255,255,255,0.9);
+          box-shadow: 0 12px 34px color-mix(in srgb, var(--accentFrom) 16%, transparent);
+          font-weight: 900;
+          color: #216897;
+          font-size: 14px;
+          margin-bottom: 18px;
+        }
+
+        .hero-left h1 {
+          margin: 0;
+          font-size: clamp(44px, 7vw, 86px);
+          line-height: 0.94;
+          letter-spacing: -0.05em;
+          font-weight: 900;
+          color: #155486;
+          text-shadow:
+            0 0 16px rgba(255,255,255,0.82),
+            0 0 34px color-mix(in srgb, var(--accentTo) 38%, transparent);
+        }
+
+        .hero-text {
+          margin-top: 18px;
+          max-width: 680px;
+          font-size: 18px;
+          line-height: 1.7;
+          color: #40739d;
         }
 
         .hero-actions,
         .button-row {
           display: flex;
-          gap: 14px;
           flex-wrap: wrap;
-          margin-top: 24px;
+          gap: 12px;
+          margin-top: 22px;
         }
 
         .primary-btn,
         .secondary-btn,
+        .action-btn,
         .send-btn,
         .pill,
         .quick-pill,
-        .quick-start-btn,
         .module-card,
-        .action-btn,
         .quiz-submit,
         .quiz-option,
         .light-orb-btn {
-          transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease,
-            border-color 0.18s ease;
+          transition: transform 0.18s ease, box-shadow 0.18s ease,
+            border-color 0.18s ease, background 0.18s ease;
         }
 
         .primary-btn:hover,
         .secondary-btn:hover,
-        .send-btn:hover,
-        .quick-pill:hover,
-        .quick-start-btn:hover,
-        .module-card:hover,
-        .pill:hover,
         .action-btn:hover,
+        .send-btn:hover,
+        .pill:hover,
+        .quick-pill:hover,
+        .module-card:hover,
         .quiz-submit:hover,
         .quiz-option:hover,
         .light-orb-btn:hover {
-          transform: translateY(-1px);
+          transform: translateY(-2px);
         }
 
         .primary-btn,
@@ -1067,26 +1595,62 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           padding: 13px 20px;
           font-weight: 900;
           cursor: pointer;
-          color: #07335d;
-          background: linear-gradient(135deg, #6ed4ff, #a8ecff);
-          box-shadow: 0 16px 34px rgba(84, 194, 255, 0.28);
+          color: #07355d;
+          background: linear-gradient(
+            135deg,
+            var(--accentFrom),
+            var(--accentTo)
+          );
+          box-shadow: 0 18px 38px color-mix(in srgb, var(--accentFrom) 26%, transparent);
         }
 
-        .action-btn.secondary,
-        .secondary-btn {
-          background: rgba(255, 255, 255, 0.78);
-          border: 1px solid rgba(140, 213, 255, 0.76);
-          color: #2f6795;
-          box-shadow: 0 12px 28px rgba(128, 205, 255, 0.18);
+        .secondary-btn,
+        .action-btn.secondary {
+          border-radius: 999px;
+          padding: 13px 20px;
+          font-weight: 900;
+          cursor: pointer;
+          border: 1px solid color-mix(in srgb, var(--accentFrom) 38%, white);
+          background: rgba(255,255,255,0.86);
+          color: #296c9b;
+          box-shadow: 0 14px 30px color-mix(in srgb, var(--accentFrom) 14%, transparent);
+        }
+
+        .hero-mini-grid,
+        .reward-grid,
+        .daily-grid,
+        .modules-grid {
+          display: grid;
+          gap: 16px;
+        }
+
+        .hero-mini-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          margin-top: 24px;
+        }
+
+        .reward-grid {
+          margin-top: 24px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .daily-grid {
+          margin-top: 24px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .modules-grid {
+          margin-top: 24px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
         .hero-right {
           display: flex;
-          align-items: center;
           justify-content: center;
+          align-items: center;
         }
 
-        .orb-wrap {
+        .orbital {
           position: relative;
           width: 360px;
           height: 360px;
@@ -1095,108 +1659,230 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           justify-content: center;
         }
 
-        .orb-ring {
+        .orbital-ring {
           position: absolute;
           border-radius: 50%;
-          border: 1px solid rgba(255, 255, 255, 0.72);
-          box-shadow: 0 0 40px rgba(123, 221, 255, 0.24);
+          border: 1px solid rgba(255,255,255,0.75);
+          box-shadow: 0 0 42px color-mix(in srgb, var(--accentFrom) 28%, transparent);
         }
 
-        .orb-ring-1 {
+        .ring-1 {
           width: 320px;
           height: 320px;
+          animation: spin 22s linear infinite;
         }
 
-        .orb-ring-2 {
-          width: 250px;
-          height: 250px;
+        .ring-2 {
+          width: 246px;
+          height: 246px;
           border-style: dashed;
+          animation: spin 18s linear infinite reverse;
         }
 
-        .orb-ring-3 {
-          width: 170px;
-          height: 170px;
+        .ring-3 {
+          width: 166px;
+          height: 166px;
+          animation: spin 26s linear infinite;
         }
 
-        .orb-core {
-          width: 120px;
-          height: 120px;
+        .orbital-core {
+          width: 126px;
+          height: 126px;
           border-radius: 50%;
-          background:
-            radial-gradient(circle at 40% 35%, #ffffff 0%, #eaf9ff 36%, #8ddcff 68%, #54c3ff 100%);
           display: flex;
           align-items: center;
           justify-content: center;
+          background:
+            radial-gradient(circle at 36% 35%, #ffffff 0%, #f2fcff 34%, var(--accentTo) 62%, var(--accentFrom) 100%);
           box-shadow:
             0 0 38px rgba(255,255,255,0.95),
-            0 0 80px rgba(110, 214, 255, 0.66),
-            0 0 120px rgba(134, 223, 255, 0.42);
+            0 0 96px color-mix(in srgb, var(--accentFrom) 42%, transparent),
+            0 0 120px color-mix(in srgb, var(--accentTo) 30%, transparent);
         }
 
-        .orb-core-inner {
-          font-size: 34px;
+        .orbital-core-inner {
+          font-size: 36px;
         }
 
-        .floating-card {
+        .orbit-bubble {
           position: absolute;
-          min-width: 112px;
+          min-width: 110px;
           padding: 12px 14px;
           border-radius: 18px;
           background: linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.82),
-            rgba(230, 247, 255, 0.58)
+            rgba(255,255,255,0.88),
+            rgba(235,249,255,0.56)
           );
-          border: 1px solid rgba(255, 255, 255, 0.82);
-          box-shadow: 0 16px 36px rgba(120, 207, 255, 0.16);
+          border: 1px solid rgba(255,255,255,0.82);
+          box-shadow: 0 14px 34px color-mix(in srgb, var(--accentFrom) 14%, transparent);
+          animation: float 4s ease-in-out infinite;
         }
 
-        .floating-1 {
-          top: 22px;
-          left: 4px;
+        .orbit-1 {
+          top: 18px;
+          left: -6px;
         }
 
-        .floating-2 {
-          top: 68px;
-          right: -6px;
+        .orbit-2 {
+          top: 74px;
+          right: -10px;
+          animation-delay: 0.6s;
         }
 
-        .floating-3 {
-          bottom: 34px;
-          left: 18px;
+        .orbit-3 {
+          bottom: 28px;
+          left: 12px;
+          animation-delay: 1.2s;
         }
 
-        .floating-label {
+        .bubble-label {
           font-size: 12px;
-          color: #5889ae;
+          color: #5a88af;
           font-weight: 700;
         }
 
-        .floating-value {
+        .bubble-value {
           margin-top: 6px;
-          font-size: 22px;
+          font-size: 18px;
           font-weight: 900;
-          color: #1e679e;
+          color: #20669d;
         }
 
-        .top-stats-grid,
-        .modules-grid,
-        .magic-grid {
-          margin-top: 26px;
+        .mini-stat {
+          border-radius: 20px;
+          padding: 16px;
+          background: linear-gradient(
+            180deg,
+            rgba(255,255,255,0.88),
+            rgba(232,247,255,0.62)
+          );
+          border: 1px solid rgba(255,255,255,0.86);
+          box-shadow: 0 14px 28px color-mix(in srgb, var(--accentFrom) 14%, transparent);
+        }
+
+        .mini-stat-top {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #5c8bb2;
+          font-weight: 800;
+          font-size: 14px;
+          margin-bottom: 8px;
+        }
+
+        .mini-stat-value {
+          font-size: 26px;
+          font-weight: 900;
+          color: #195e90;
+        }
+
+        .reward-card {
+          border-radius: 22px;
+          padding: 16px;
+          background: linear-gradient(
+            180deg,
+            rgba(255,255,255,0.88),
+            rgba(230,247,255,0.7)
+          );
+          border: 1px solid rgba(255,255,255,0.86);
+          box-shadow: 0 14px 30px color-mix(in srgb, var(--accentFrom) 14%, transparent);
+        }
+
+        .reward-top {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #5d8cb2;
+          font-weight: 800;
+          font-size: 14px;
+          margin-bottom: 8px;
+        }
+
+        .reward-value {
+          font-size: 30px;
+          font-weight: 900;
+          color: #175c8d;
+        }
+
+        .daily-card {
+          border-radius: 28px;
+          padding: 18px;
+        }
+
+        .card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+
+        .tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border-radius: 999px;
+          padding: 8px 12px;
+          background: rgba(255,255,255,0.82);
+          border: 1px solid rgba(255,255,255,0.92);
+          font-size: 12px;
+          font-weight: 900;
+          color: #286c9a;
+        }
+
+        .achievement-list {
           display: grid;
-          gap: 16px;
+          gap: 10px;
+          margin-top: 14px;
         }
 
-        .top-stats-grid {
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+        .achievement {
+          display: flex;
+          gap: 10px;
+          padding: 12px;
+          border-radius: 16px;
+          background: rgba(255,255,255,0.66);
+          border: 1px solid rgba(255,255,255,0.78);
+          color: #507da2;
+        }
+
+        .achievement.active {
+          border-color: color-mix(in srgb, var(--accentFrom) 46%, white);
+          box-shadow: 0 10px 24px color-mix(in srgb, var(--accentFrom) 14%, transparent);
+        }
+
+        .achievement-icon {
+          font-size: 20px;
+          line-height: 1;
+          margin-top: 2px;
+        }
+
+        .section-title {
+          font-size: 34px;
+          font-weight: 900;
+          color: #195c8f;
+          line-height: 1.05;
+        }
+
+        .section-title.small {
+          font-size: 22px;
+        }
+
+        .section-subtitle {
+          margin-top: 6px;
+          color: #4a79a1;
+          font-size: 15px;
+          line-height: 1.55;
+        }
+
+        .section-text {
+          color: #4f7da4;
+          line-height: 1.65;
         }
 
         .modules-grid {
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .magic-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          margin-top: 24px;
         }
 
         .module-card {
@@ -1211,9 +1897,9 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
         .module-card.active {
           transform: translateY(-2px);
           box-shadow:
-            0 26px 60px rgba(91, 182, 255, 0.28),
+            0 26px 60px color-mix(in srgb, var(--accentFrom) 28%, transparent),
             inset 0 1px 0 rgba(255,255,255,0.98);
-          border-color: rgba(88, 196, 255, 0.95);
+          border-color: color-mix(in srgb, var(--accentFrom) 80%, white);
         }
 
         .module-icon {
@@ -1224,20 +1910,20 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           border-radius: 18px;
           font-size: 28px;
           background:
-            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(189, 233, 255, 0.88));
-          box-shadow: 0 12px 26px rgba(110, 214, 255, 0.14);
+            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(212,246,255,0.88));
+          box-shadow: 0 12px 30px color-mix(in srgb, var(--accentFrom) 14%, transparent);
           margin-bottom: 16px;
         }
 
         .module-title {
           font-size: 22px;
           font-weight: 900;
-          color: #206499;
+          color: #20669c;
           margin-bottom: 6px;
         }
 
         .module-desc {
-          color: #4a79a1;
+          color: #4c7ba2;
           font-size: 14px;
           line-height: 1.55;
         }
@@ -1249,39 +1935,38 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           gap: 8px;
           border-radius: 999px;
           padding: 8px 12px;
-          background: rgba(93, 195, 255, 0.14);
+          background: color-mix(in srgb, var(--accentFrom) 12%, white);
           color: #1d6ea8;
           font-size: 13px;
           font-weight: 900;
-          border: 1px solid rgba(104, 205, 255, 0.42);
+          border: 1px solid color-mix(in srgb, var(--accentFrom) 40%, white);
         }
 
         .chat-area {
           margin-top: 26px;
           display: grid;
-          grid-template-columns: minmax(0, 1.08fr) 380px;
+          grid-template-columns: minmax(0, 1.06fr) 380px;
           gap: 22px;
           align-items: start;
         }
 
         .chat-panel,
-        .reward-panel,
-        .quick-start-card,
-        .heaven-card,
-        .magic-card {
+        .side-card,
+        .profile-card,
+        .admin-card {
           border-radius: 30px;
-          padding: 18px;
+          padding: 20px;
         }
 
         .chat-panel {
-          min-height: 760px;
+          min-height: 780px;
           display: flex;
           flex-direction: column;
         }
 
         .sticky-stack {
           position: sticky;
-          top: 18px;
+          top: 16px;
           display: grid;
           gap: 16px;
         }
@@ -1295,41 +1980,23 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           margin-bottom: 14px;
         }
 
-        .section-title {
-          font-size: 34px;
-          font-weight: 900;
-          color: #1c6599;
-          line-height: 1.05;
-        }
-
-        .section-title.small {
-          font-size: 24px;
-        }
-
-        .section-subtitle {
-          margin-top: 6px;
-          color: #4c7ba0;
-          font-size: 15px;
-        }
-
-        .section-text {
-          color: #4d7ba2;
-          line-height: 1.65;
-        }
-
         .status-pill {
           padding: 10px 14px;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.8);
-          border: 1px solid rgba(149, 222, 255, 0.72);
+          background: rgba(255,255,255,0.82);
+          border: 1px solid rgba(255,255,255,0.9);
           color: #2e6f9d;
           font-weight: 900;
-          box-shadow: 0 12px 28px rgba(142, 209, 255, 0.16);
+          box-shadow: 0 12px 28px color-mix(in srgb, var(--accentFrom) 14%, transparent);
         }
 
         .status-pill.thinking {
-          background: linear-gradient(135deg, #72d8ff, #b5f0ff);
-          color: #083b65;
+          background: linear-gradient(
+            135deg,
+            var(--accentFrom),
+            var(--accentTo)
+          );
+          color: #07355d;
         }
 
         .module-pills,
@@ -1341,34 +2008,45 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
         }
 
         .pill,
-        .quick-pill {
+        .quick-pill,
+        .quiz-option,
+        .select,
+        .date-input {
           border-radius: 999px;
           padding: 10px 14px;
           font-size: 13px;
           font-weight: 900;
           cursor: pointer;
           white-space: nowrap;
-          color: #2c6c9b;
-          background: rgba(255, 255, 255, 0.8);
-          border: 1px solid rgba(148, 221, 255, 0.74);
-          box-shadow: 0 10px 22px rgba(138, 207, 255, 0.14);
+          color: #2b6c9a;
+          background: rgba(255,255,255,0.84);
+          border: 1px solid rgba(255,255,255,0.92);
+          box-shadow: 0 10px 22px color-mix(in srgb, var(--accentFrom) 12%, transparent);
         }
 
         .pill.active {
-          border: 2px solid rgba(89, 197, 255, 0.96);
-          background: linear-gradient(135deg, #ffffff, #d6f3ff);
+          border: 2px solid color-mix(in srgb, var(--accentFrom) 84%, white);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,1),
+            color-mix(in srgb, var(--accentTo) 26%, white)
+          );
         }
 
         .messages-box {
           flex: 1;
           overflow-y: auto;
           border-radius: 26px;
-          border: 1px solid rgba(255, 255, 255, 0.86);
+          border: 1px solid rgba(255,255,255,0.92);
           background:
-            linear-gradient(180deg, rgba(255,255,255,0.82), rgba(233,248,255,0.58));
+            linear-gradient(
+              180deg,
+              rgba(255,255,255,0.82),
+              rgba(231,247,255,0.62)
+            );
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.98),
-            0 22px 44px rgba(132, 209, 255, 0.16);
+            0 22px 44px color-mix(in srgb, var(--accentFrom) 14%, transparent);
           padding: 16px;
         }
 
@@ -1386,27 +2064,31 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
         }
 
         .message-bubble {
-          max-width: 84%;
+          max-width: 86%;
           border-radius: 24px;
           padding: 15px 16px;
           white-space: pre-wrap;
           line-height: 1.7;
-          box-shadow: 0 16px 32px rgba(132, 210, 255, 0.12);
+          box-shadow: 0 16px 32px color-mix(in srgb, var(--accentFrom) 12%, transparent);
         }
 
         .message-bubble.user {
-          background: linear-gradient(135deg, #77daff, #b4efff);
-          border: 1px solid rgba(96, 201, 255, 0.9);
+          background: linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--accentFrom) 90%, white),
+            color-mix(in srgb, var(--accentTo) 90%, white)
+          );
+          border: 1px solid color-mix(in srgb, var(--accentFrom) 70%, white);
           color: #063a66;
         }
 
         .message-bubble.assistant {
           background: linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.97),
-            rgba(232, 247, 255, 0.92)
+            rgba(255,255,255,0.97),
+            rgba(232,247,255,0.92)
           );
-          border: 1px solid rgba(160, 228, 255, 0.82);
+          border: 1px solid rgba(255,255,255,0.92);
           color: #2a638e;
         }
 
@@ -1422,17 +2104,17 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
         }
 
         .card-bubble {
-          width: min(100%, 700px);
+          width: min(100%, 760px);
           border-radius: 26px;
           padding: 18px;
           background: linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.96),
-            rgba(232, 247, 255, 0.92)
+            rgba(255,255,255,0.97),
+            rgba(232,247,255,0.92)
           );
-          border: 1px solid rgba(160, 228, 255, 0.82);
+          border: 1px solid rgba(255,255,255,0.92);
           color: #2a638e;
-          box-shadow: 0 16px 32px rgba(132, 210, 255, 0.12);
+          box-shadow: 0 16px 32px color-mix(in srgb, var(--accentFrom) 12%, transparent);
         }
 
         .card-title {
@@ -1452,8 +2134,8 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           margin-bottom: 18px;
           padding: 14px;
           border-radius: 18px;
-          background: rgba(255,255,255,0.66);
-          border: 1px solid rgba(174, 231, 255, 0.76);
+          background: rgba(255,255,255,0.72);
+          border: 1px solid rgba(255,255,255,0.88);
         }
 
         .quiz-question-title {
@@ -1465,35 +2147,29 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
 
         .quiz-options,
         .task-steps,
-        .quick-start-list,
-        .field-row {
+        .field-row,
+        .game-stats,
+        .spread-grid,
+        .admin-help-grid,
+        .achievement-list {
           display: grid;
           gap: 10px;
         }
 
-        .quiz-option,
-        .quick-start-btn,
-        .select,
-        .date-input {
+        .quiz-option {
           text-align: left;
           border-radius: 14px;
-          border: 1px solid rgba(160, 228, 255, 0.82);
-          background: rgba(255,255,255,0.88);
-          color: #2b6797;
           padding: 10px 12px;
-          cursor: pointer;
-          font-weight: 600;
-        }
-
-        .select,
-        .date-input {
-          cursor: initial;
-          outline: none;
+          white-space: normal;
         }
 
         .quiz-option.active {
-          border: 2px solid rgba(89, 197, 255, 0.96);
-          background: linear-gradient(135deg, #ffffff, #d6f3ff);
+          border: 2px solid color-mix(in srgb, var(--accentFrom) 84%, white);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,1),
+            color-mix(in srgb, var(--accentTo) 26%, white)
+          );
         }
 
         .quiz-result,
@@ -1501,18 +2177,17 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
         .mini-panel,
         .task-box,
         .task-step,
-        .game-panel {
+        .game-panel,
+        .profile-preview {
           border-radius: 18px;
           padding: 14px 16px;
-          background: linear-gradient(135deg, #effbff, #dff4ff);
-          border: 1px solid rgba(137, 217, 255, 0.86);
-        }
-
-        .spread-grid,
-        .game-stats,
-        .reward-grid {
-          display: grid;
-          gap: 12px;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.96),
+            rgba(228,246,255,0.8)
+          );
+          border: 1px solid rgba(255,255,255,0.9);
+          box-shadow: 0 12px 28px color-mix(in srgb, var(--accentFrom) 12%, transparent);
         }
 
         .spread-grid {
@@ -1521,7 +2196,7 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
         }
 
         .game-stats,
-        .reward-grid {
+        .admin-help-grid {
           grid-template-columns: repeat(2, 1fr);
           margin-top: 12px;
         }
@@ -1535,32 +2210,34 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           font-size: 40px;
           justify-self: center;
           background:
-            radial-gradient(circle at 40% 35%, #ffffff 0%, #eaf9ff 36%, #8ddcff 68%, #54c3ff 100%);
+            radial-gradient(circle at 40% 35%, #ffffff 0%, #eaf9ff 36%, var(--accentTo) 68%, var(--accentFrom) 100%);
           box-shadow:
             0 0 28px rgba(255,255,255,0.9),
-            0 0 50px rgba(110,214,255,0.55);
+            0 0 50px color-mix(in srgb, var(--accentFrom) 55%, transparent);
         }
 
         .light-orb-btn.live {
           animation: pulse 1s ease-in-out infinite;
         }
 
-        .input-wrap {
+        .input-wrap,
+        .editor-box {
           margin-top: 14px;
         }
 
-        .chat-input {
+        .chat-input,
+        .editor-input {
           width: 100%;
           resize: vertical;
           border-radius: 24px;
-          border: 1px solid rgba(151, 222, 255, 0.82);
-          background: rgba(255, 255, 255, 0.88);
+          border: 1px solid rgba(255,255,255,0.92);
+          background: rgba(255,255,255,0.86);
           color: #1f5d90;
           padding: 15px;
           outline: none;
           font-size: 15px;
           box-shadow:
-            0 14px 32px rgba(143, 213, 255, 0.16),
+            0 14px 32px color-mix(in srgb, var(--accentFrom) 12%, transparent),
             inset 0 1px 0 rgba(255,255,255,0.98);
         }
 
@@ -1582,29 +2259,74 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           color: #1d659b;
         }
 
-        .reward-card {
-          border-radius: 22px;
-          padding: 16px;
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.86), rgba(225,246,255,0.72));
-          border: 1px solid rgba(255,255,255,0.85);
-          box-shadow: 0 14px 28px rgba(129, 209, 255, 0.14);
+        .profile-admin-grid {
+          margin-top: 28px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 22px;
         }
 
-        .reward-top {
+        .profile-preview {
           display: flex;
+          gap: 16px;
+          align-items: flex-start;
+          margin-top: 14px;
+        }
+
+        .profile-avatar {
+          width: 76px;
+          height: 76px;
+          border-radius: 22px;
+          display: grid;
+          place-items: center;
+          font-size: 34px;
+          background: rgba(255,255,255,0.92);
+          border: 1px solid rgba(255,255,255,0.95);
+          flex-shrink: 0;
+        }
+
+        .profile-name {
+          font-size: 24px;
+          font-weight: 900;
+          color: #1d6497;
+        }
+
+        .profile-title {
+          font-weight: 800;
+          color: #4580aa;
+          margin-top: 2px;
+        }
+
+        .profile-aura,
+        .profile-bio {
+          margin-top: 10px;
+          color: #4f7da4;
+          line-height: 1.6;
+        }
+
+        .profile-badges {
+          margin-top: 12px;
+        }
+
+        .profile-badge {
+          display: inline-flex;
           align-items: center;
           gap: 8px;
-          color: #5b8ab0;
-          font-weight: 800;
-          font-size: 14px;
-          margin-bottom: 8px;
+          border-radius: 999px;
+          padding: 8px 12px;
+          font-size: 13px;
+          font-weight: 900;
+          color: #2f6d9c;
+          border: 1px solid rgba(255,255,255,0.92);
+          background: rgba(255,255,255,0.84);
         }
 
-        .reward-value {
-          font-size: 28px;
-          font-weight: 900;
-          color: #1d679d;
+        .select,
+        .date-input {
+          border-radius: 14px;
+          padding: 12px 14px;
+          font-size: 14px;
+          white-space: normal;
         }
 
         @keyframes pulse {
@@ -1616,15 +2338,43 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
           }
         }
 
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+
+        @keyframes drift {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(38vw);
+          }
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
         @media (max-width: 1100px) {
           .hero,
           .chat-area,
-          .magic-grid {
+          .profile-admin-grid,
+          .daily-grid {
             grid-template-columns: 1fr;
           }
 
-          .modules-grid,
-          .top-stats-grid {
+          .reward-grid,
+          .modules-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
@@ -1638,10 +2388,13 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
             font-size: 48px;
           }
 
+          .reward-grid,
           .modules-grid,
-          .top-stats-grid,
-          .magic-grid,
-          .spread-grid {
+          .game-stats,
+          .admin-help-grid,
+          .hero-mini-grid,
+          .spread-grid,
+          .daily-grid {
             grid-template-columns: 1fr;
           }
 
@@ -1659,28 +2412,77 @@ const [tarotSpread, setTarotSpread] = useState<(typeof tarotDeck)[number][]>([])
             font-size: 22px;
           }
 
-          .orb-wrap {
+          .top-notice {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .orbital {
             width: 280px;
             height: 280px;
           }
 
-          .orb-ring-1 {
+          .ring-1 {
             width: 250px;
             height: 250px;
           }
 
-          .orb-ring-2 {
+          .ring-2 {
             width: 194px;
             height: 194px;
           }
 
-          .orb-ring-3 {
+          .ring-3 {
             width: 136px;
             height: 136px;
+          }
+
+          .profile-preview {
+            flex-direction: column;
           }
         }
       `}</style>
     </main>
+  );
+}
+
+function RewardCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="reward-card">
+      <div className="reward-top">
+        <span>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <div className="reward-value">{value}</div>
+    </div>
+  );
+}
+
+function MiniStat({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="mini-stat">
+      <div className="mini-stat-top">
+        <span>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <div className="mini-stat-value">{value}</div>
+    </div>
   );
 }
 
@@ -1826,26 +2628,6 @@ function TaskCard({
       >
         {done ? "Oznaczone jako zrobione ✅" : "Oznacz jako zrobione"}
       </button>
-    </div>
-  );
-}
-
-function RewardCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="reward-card">
-      <div className="reward-top">
-        <span>{icon}</span>
-        <span>{label}</span>
-      </div>
-      <div className="reward-value">{value}</div>
     </div>
   );
 }
