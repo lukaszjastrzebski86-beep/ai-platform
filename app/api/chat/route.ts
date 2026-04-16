@@ -11,172 +11,208 @@ type ModuleType =
   | "quiz"
   | "task";
 
-type AgentResult = {
-  agent: "insight" | "strategy" | "critic";
-  content: string;
-};
+function normalizeModule(value: unknown): ModuleType {
+  if (
+    value === "general" ||
+    value === "relationships" ||
+    value === "emotions" ||
+    value === "quiz" ||
+    value === "task"
+  ) {
+    return value;
+  }
+  return "general";
+}
 
-function getModuleInstructions(module: ModuleType) {
+function getModuleSystem(module: ModuleType) {
   switch (module) {
     case "relationships":
       return `
-Priorytet: relacje, sygnały, dynamika, granice, komunikacja, intencje, czerwone flagi.
+Jesteś ekspertem od relacji, komunikacji, granic, czerwonych flag i dynamiki między ludźmi.
+Masz pomagać użytkownikowi zrozumieć sytuację, ale bez przesadnego moralizowania.
+Dawaj konkretne obserwacje i praktyczne kolejne kroki.
 `;
     case "emotions":
       return `
-Priorytet: emocje, napięcie, chaos, regulacja, nazwanie stanu, odzyskanie jasności.
+Jesteś ekspertem od emocji, napięcia, chaosu psychicznego, samoregulacji i odzyskiwania jasności.
+Pomagasz nazwać stan, uporządkować go i zaproponować prosty kierunek.
+Nie pisz jak terapeuta kliniczny, tylko jak bardzo trafne wspierające AI.
 `;
     case "quiz":
       return `
-Priorytet: forma interaktywna. Jeśli pasuje, dawaj krótkie pytania diagnostyczne lub mini-quiz.
+Jesteś ekspertem od angażujących quizów, testów i krótkiej diagnostyki.
+Jeśli użytkownik prosi o quiz, twórz od razu zwięzły, angażujący quiz lub mini-test.
+Nie przeciągaj. Lepiej dać konkretną formę niż gadać o quizie.
 `;
     case "task":
       return `
-Priorytet: konkretne działanie. Dawaj mikro-zadania, plan minimum, prosty kolejny krok.
+Jesteś ekspertem od mikro-zadań, nawyków, działania i ruchu do przodu.
+Jeśli użytkownik chce zadanie, daj konkretne zadanie, plan minimum albo prosty challenge.
+Zadanie ma być krótkie, wykonalne i praktyczne.
 `;
     default:
       return `
-Priorytet: ogólne wsparcie, porządkowanie myśli, decyzji, kierunku i problemu.
+Jesteś wszechstronnym, bardzo trafnym AI do porządkowania chaosu, decyzji, emocji, kierunku i codziennych problemów.
+Masz prowadzić użytkownika jasno, konkretnie i nowocześnie.
 `;
   }
 }
 
-async function runInsightAgent(message: string, module: ModuleType) {
-  const response = await openai.responses.create({
+async function runAgent(
+  instructions: string,
+  input: string,
+  maxOutputTokens = 350
+) {
+  const res = await openai.responses.create({
     model: "gpt-4.1-mini",
-    instructions: `
-Jesteś agentem INSIGHT.
-Masz rozpoznać:
-- o co naprawdę chodzi użytkownikowi,
-- jaki jest rdzeń problemu,
-- co użytkownik może czuć,
-- jakie są 2-4 najważniejsze obserwacje.
-
-Zasady:
-- mów po polsku,
-- bądź konkretny,
-- nie dawaj finalnej odpowiedzi dla użytkownika,
-- nie lej wody,
-- maksymalnie 180 słów.
-
-${getModuleInstructions(module)}
-`,
-    input: message,
+    instructions,
+    input,
+    max_output_tokens: maxOutputTokens,
   });
 
-  return {
-    agent: "insight" as const,
-    content: (response.output_text || "").trim(),
-  };
+  return (res.output_text || "").trim();
 }
 
-async function runStrategyAgent(message: string, module: ModuleType) {
-  const response = await openai.responses.create({
-    model: "gpt-4.1-mini",
-    instructions: `
-Jesteś agentem STRATEGY.
-Masz przygotować:
-- kierunek odpowiedzi,
-- 3-6 praktycznych kroków,
-- strukturę rozwiązania,
-- co użytkownik ma zrobić teraz.
+async function runTriad(message: string, module: ModuleType) {
+  const moduleSystem = getModuleSystem(module);
+
+  const insightPrompt = `
+${moduleSystem}
+
+Rola: INSIGHT
+
+Twoje zadanie:
+- rozpoznać, o co naprawdę chodzi użytkownikowi,
+- nazwać rdzeń problemu,
+- wychwycić emocje, intencję i kontekst,
+- wskazać 2-4 najważniejsze obserwacje.
 
 Zasady:
-- mów po polsku,
-- bądź praktyczny,
-- nie dawaj finalnej odpowiedzi dla użytkownika,
-- nie pisz o agentach,
-- maksymalnie 180 słów.
+- po polsku,
+- krótko i konkretnie,
+- bez finalnej odpowiedzi dla użytkownika,
+- bez lania wody.
+`;
 
-${getModuleInstructions(module)}
-`,
-    input: message,
-  });
+  const strategyPrompt = `
+${moduleSystem}
 
-  return {
-    agent: "strategy" as const,
-    content: (response.output_text || "").trim(),
-  };
-}
+Rola: STRATEGY
 
-async function runCriticAgent(message: string, module: ModuleType) {
-  const response = await openai.responses.create({
-    model: "gpt-4.1-mini",
-    instructions: `
-Jesteś agentem CRITIC.
-Masz zrobić kontrolę jakości:
-- czego nie wolno założyć bez dowodu,
-- jakie są ryzyka błędnej interpretacji,
-- co trzeba doprecyzować,
-- jak zachować trafność i użyteczność.
+Twoje zadanie:
+- przygotować praktyczny kierunek odpowiedzi,
+- rozpisać sensowne kroki lub formę odpowiedzi,
+- wskazać co użytkownik ma zrobić teraz,
+- dopasować styl do modułu.
 
 Zasady:
-- mów po polsku,
-- bądź krytyczny, ale użyteczny,
-- nie dawaj finalnej odpowiedzi dla użytkownika,
-- nie bądź rozwlekły,
-- maksymalnie 150 słów.
+- po polsku,
+- konkretnie,
+- bez finalnej odpowiedzi dla użytkownika,
+- bez zbędnej teorii.
+`;
 
-${getModuleInstructions(module)}
-`,
-    input: message,
-  });
+  const criticPrompt = `
+${moduleSystem}
 
-  return {
-    agent: "critic" as const,
-    content: (response.output_text || "").trim(),
-  };
+Rola: CRITIC
+
+Twoje zadanie:
+- sprawdzić trafność,
+- wypunktować ryzyka złej interpretacji,
+- wskazać czego nie wolno zakładać bez dowodu,
+- pilnować jakości i użyteczności.
+
+Zasady:
+- po polsku,
+- krótko,
+- bez finalnej odpowiedzi dla użytkownika.
+`;
+
+  const [insight, strategy, critic] = await Promise.all([
+    runAgent(insightPrompt, message, 250),
+    runAgent(strategyPrompt, message, 250),
+    runAgent(criticPrompt, message, 220),
+  ]);
+
+  return { insight, strategy, critic };
 }
 
-async function synthesizeFinal(params: {
+async function synthesizeReply(params: {
   message: string;
   module: ModuleType;
   insight: string;
   strategy: string;
   critic: string;
 }) {
-  const response = await openai.responses.create({
-    model: "gpt-4.1-mini",
-    instructions: `
+  const { message, module, insight, strategy, critic } = params;
+
+  const moduleSpecificStyle =
+    module === "quiz"
+      ? `
+Jeśli użytkownik chce quizu, nie gadaj długo o możliwościach.
+Daj od razu krótki quiz albo pierwszy zestaw pytań.
+`
+      : module === "task"
+      ? `
+Jeśli użytkownik chce zadania, daj od razu konkretne zadanie lub challenge.
+`
+      : `
+Daj odpowiedź prowadzącą, ale praktyczną.
+`;
+
+  const finalPrompt = `
 Jesteś finalnym głosem produktu.
-Użytkownik ma widzieć jedno spójne AI, bez agentów.
+Użytkownik ma widzieć jedno spójne AI, bez wspominania o agentach.
 
-Twoje zadanie:
-- połącz analizę, strategię i kontrolę jakości w jedną odpowiedź,
-- bądź celny, pomocny i konkretny,
-- jeśli czegoś nie wiesz, zaznacz to jasno,
-- jeśli pasuje, zadawaj 1 dobre pytanie doprecyzowujące,
-- unikaj lania wody.
-
-Styl:
+Zasady:
+- po polsku,
+- konkretnie,
 - nowocześnie,
-- ludzko,
-- z poczuciem prowadzenia,
-- po polsku.
+- pomocnie,
+- bez lania wody,
+- bez mówienia o systemie wewnętrznym,
+- jeśli czegoś nie wiadomo, zaznacz to jasno.
 
-Format:
+${moduleSpecificStyle}
+
+Format odpowiedzi:
 1. Krótki wniosek
 2. Co zrobić teraz
 3. Co dalej
-`,
-    input: `
-MODUŁ: ${params.module}
+
+Jeśli moduł to "quiz", możesz zamiast tego dać:
+- krótki wstęp
+- 3-5 pytań quizowych
+- krótki opis co dalej po odpowiedziach
+
+Jeśli moduł to "task", możesz zamiast tego dać:
+- nazwę zadania
+- cel
+- 3 kroki
+- wersję minimum
+`;
+
+  return runAgent(
+    finalPrompt,
+    `
+MODUŁ:
+${module}
 
 WIADOMOŚĆ UŻYTKOWNIKA:
-${params.message}
+${message}
 
-ANALIZA INSIGHT:
-${params.insight}
+INSIGHT:
+${insight}
 
-STRATEGIA:
-${params.strategy}
+STRATEGY:
+${strategy}
 
-KONTROLA JAKOŚCI:
-${params.critic}
+CRITIC:
+${critic}
 `,
-  });
-
-  return (response.output_text || "").trim();
+    700
+  );
 }
 
 export async function POST(req: Request) {
@@ -195,13 +231,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const message =
       typeof body?.message === "string" ? body.message.trim() : "";
-    const module: ModuleType =
-      body?.module &&
-      ["general", "relationships", "emotions", "quiz", "task"].includes(
-        body.module
-      )
-        ? body.module
-        : "general";
+    const module = normalizeModule(body?.module);
 
     if (!message) {
       return Response.json(
@@ -214,18 +244,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const [insight, strategy, critic] = await Promise.all([
-      runInsightAgent(message, module),
-      runStrategyAgent(message, module),
-      runCriticAgent(message, module),
-    ]);
-
-    const reply = await synthesizeFinal({
+    const triad = await runTriad(message, module);
+    const reply = await synthesizeReply({
       message,
       module,
-      insight: insight.content,
-      strategy: strategy.content,
-      critic: critic.content,
+      insight: triad.insight,
+      strategy: triad.strategy,
+      critic: triad.critic,
     });
 
     return Response.json({
@@ -233,7 +258,7 @@ export async function POST(req: Request) {
       reply,
       meta: {
         module,
-        engine: "triad-v1",
+        engine: "triad-v2",
       },
     });
   } catch (error: any) {
