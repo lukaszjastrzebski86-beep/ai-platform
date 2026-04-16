@@ -37,42 +37,6 @@ type TaskPayload = {
   reward: string;
 };
 
-type AdminPreview = {
-  themeName?: string;
-  heroTitle?: string;
-  heroSubtitle?: string;
-  notice?: string;
-  accentFrom?: string;
-  accentTo?: string;
-  badgeText?: string;
-};
-
-type ProfilePreview = {
-  displayName?: string;
-  title?: string;
-  aura?: string;
-  accent?: string;
-  avatar?: string;
-  badge?: string;
-  bio?: string;
-};
-
-function extractJson(text: string) {
-  const cleaned = text
-    .replace(/^```json/i, "")
-    .replace(/^```/i, "")
-    .replace(/```$/i, "")
-    .trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Nie udało się odczytać JSON.");
-    return JSON.parse(match[0]);
-  }
-}
-
 function normalizeModule(value: unknown): ModuleType {
   if (
     value === "general" ||
@@ -494,76 +458,6 @@ ${critic}
   );
 }
 
-async function generateAdminPreview(prompt: string) {
-  const instructions = `
-Jesteś AI-projektantem i architektem interfejsu.
-
-Twoje zadanie: na podstawie polecenia admina zwrócić WYŁĄCZNIE JSON o kształcie:
-{
-  "themeName": string,
-  "heroTitle": string,
-  "heroSubtitle": string,
-  "notice": string,
-  "accentFrom": string, // HEX lub CSS color
-  "accentTo": string,   // HEX lub CSS color
-  "badgeText": string,
-  "explanation": string
-}
-
-Zmieniaj tylko to, o co prosi admin. Zachowuj elegancję, nowoczesność i klimat "niebiański / premium / AI".
-Brak komentarzy poza JSON.
-`;
-
-  const output = await runAgent(instructions, prompt, 320);
-  const parsed = extractJson(output);
-
-  return {
-    themeName: parsed.themeName,
-    heroTitle: parsed.heroTitle,
-    heroSubtitle: parsed.heroSubtitle,
-    notice: parsed.notice,
-    accentFrom: parsed.accentFrom,
-    accentTo: parsed.accentTo,
-    badgeText: parsed.badgeText,
-    explanation: parsed.explanation,
-  };
-}
-
-async function generateProfilePreview(prompt: string) {
-  const instructions = `
-Jesteś AI-stylistą profilu użytkownika.
-
-Na podstawie polecenia zwróć WYŁĄCZNIE JSON o kształcie:
-{
-  "displayName": string,
-  "title": string,
-  "aura": string,
-  "accent": string, // HEX lub CSS color
-  "avatar": string, // emoji lub krótki symbol
-  "badge": string,
-  "bio": string,
-  "explanation": string
-}
-
-Zachowuj estetykę i styl produktu.
-Brak komentarzy poza JSON.
-`;
-
-  const output = await runAgent(instructions, prompt, 280);
-  const parsed = extractJson(output);
-
-  return {
-    displayName: parsed.displayName,
-    title: parsed.title,
-    aura: parsed.aura,
-    accent: parsed.accent,
-    avatar: parsed.avatar,
-    badge: parsed.badge,
-    bio: parsed.bio,
-    explanation: parsed.explanation,
-  };
-}
-
 export async function POST(req: Request) {
   try {
     if (!process.env.OPENAI_API_KEY) {
@@ -578,70 +472,6 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const action = typeof body?.action === "string" ? body.action : "chat";
-
-    if (action === "admin") {
-      const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
-      if (!prompt) {
-        return Response.json(
-          {
-            ok: false,
-            error: "NO_ADMIN_PROMPT",
-            details: "Brakuje polecenia dla panelu admina.",
-          },
-          { status: 400 }
-        );
-      }
-
-      const result = await generateAdminPreview(prompt);
-
-      return Response.json({
-        ok: true,
-        type: "admin",
-        preview: {
-          themeName: result.themeName,
-          heroTitle: result.heroTitle,
-          heroSubtitle: result.heroSubtitle,
-          notice: result.notice,
-          accentFrom: result.accentFrom,
-          accentTo: result.accentTo,
-          badgeText: result.badgeText,
-        },
-        explanation: result.explanation,
-      });
-    }
-
-    if (action === "profile") {
-      const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
-      if (!prompt) {
-        return Response.json(
-          {
-            ok: false,
-            error: "NO_PROFILE_PROMPT",
-            details: "Brakuje polecenia dla edytora profilu.",
-          },
-          { status: 400 }
-        );
-      }
-
-      const result = await generateProfilePreview(prompt);
-
-      return Response.json({
-        ok: true,
-        type: "profile",
-        preview: {
-          displayName: result.displayName,
-          title: result.title,
-          aura: result.aura,
-          accent: result.accent,
-          avatar: result.avatar,
-          badge: result.badge,
-          bio: result.bio,
-        },
-        explanation: result.explanation,
-      });
-    }
-
     const message =
       typeof body?.message === "string" ? body.message.trim() : "";
     const module = normalizeModule(body?.module);
@@ -701,7 +531,7 @@ export async function POST(req: Request) {
       meta: {
         module,
         topic,
-        engine: "triad-v4",
+        engine: "triad-v3",
       },
     });
   } catch (error: any) {
