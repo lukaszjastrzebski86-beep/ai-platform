@@ -176,19 +176,3 @@ export default function AppShell({
     </motion.div>
   );
 }
-                <div className="result-box">
-                  Portal jest już przygotowany pod osobne światy: AI, rewardy,
-                  gry, tarot, horoskop, profil i admin studio.
-                </div>
-                <div className="small-note">
-                  Ten shell to baza pod dalsze przejścia, animacje i osobne
-                  doświadczenia jak w portalu gamingowym.
-                </div>
-              </div>
-            )}
-          </aside>
-        </div>
-      </div>
-    </div>
-  );
-}

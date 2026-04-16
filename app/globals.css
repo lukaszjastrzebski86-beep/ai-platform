@@ -706,10 +706,6 @@ select {
     transform: translate(-5px, -5px) scale(1.02);
   }
 }
-  grid-template-columns: 270px minmax(0, 1fr) 300px;
-  gap: 18px;
-  align-items: start;
-}
 
 .sidebar,
 .rightpanel {

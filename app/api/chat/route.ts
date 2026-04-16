@@ -1,9 +1,5 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 type ModuleType =
   | "general"
   | "relationships"
@@ -342,6 +338,7 @@ Jesteś wszechstronnym AI do porządkowania chaosu, decyzji, emocji i kierunku.
 }
 
 async function runAgent(
+  openai: OpenAI,
   instructions: string,
   input: string,
   maxOutputTokens = 280
@@ -358,7 +355,7 @@ async function runAgent(
   return completion.choices[0].message.content?.trim() || "";
 }
 
-async function runTriad(message: string, module: ModuleType) {
+async function runTriad(openai: OpenAI, message: string, module: ModuleType) {
   const moduleSystem = getModuleSystem(module);
 
   const insightPrompt = `
@@ -401,15 +398,15 @@ Bądź krótki.
 `;
 
   const [insight, strategy, critic] = await Promise.all([
-    runAgent(insightPrompt, message, 180),
-    runAgent(strategyPrompt, message, 180),
-    runAgent(criticPrompt, message, 150),
+    runAgent(openai, insightPrompt, message, 180),
+    runAgent(openai, strategyPrompt, message, 180),
+    runAgent(openai, criticPrompt, message, 150),
   ]);
 
   return { insight, strategy, critic };
 }
 
-async function synthesizeReply(params: {
+async function synthesizeReply(openai: OpenAI, params: {
   message: string;
   module: ModuleType;
   insight: string;
@@ -439,6 +436,7 @@ Nie pisz o agentach.
 `;
 
   return runAgent(
+    openai,
     finalPrompt,
     `
 MODUŁ:
@@ -472,6 +470,10 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     const body = await req.json();
     const message =
@@ -517,8 +519,8 @@ export async function POST(req: Request) {
       });
     }
 
-    const triad = await runTriad(message, module);
-    const reply = await synthesizeReply({
+    const triad = await runTriad(openai, message, module);
+    const reply = await synthesizeReply(openai, {
       message,
       module,
       insight: triad.insight,
